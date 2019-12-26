@@ -1,4 +1,4 @@
-enum Value {
+pub enum Value {
     Number(isize),
     String(String),
 }
