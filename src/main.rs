@@ -1,4 +1,4 @@
-use expr::lexer;
+use expr::lexer::Lexer;
 fn main() {
-    lexer::Lexer::new("");
+    let a = Lexer::new("Hello");
 }
