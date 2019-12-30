@@ -36,12 +36,12 @@ impl Lexer {
     }
 
     fn lexeme(&self) -> String {
-        // let a = &self.expr_chars[self.start..self.current]
         self.expr_chars[self.start..self.current]
             .iter()
             .cloned()
             .collect::<String>()
     }
+
     fn token_type_with_literal(&mut self, tt: TokenType, literal: Option<Value>) -> Token {
         let token: Token = Token::new(tt, self.lexeme(), literal, self.start, self.current);
         self.start = self.current;
@@ -68,6 +68,21 @@ impl Lexer {
         self.scan()
     }
 
+    pub fn number(&mut self) -> Token {
+        while self.peek(0).is_digit(10) {
+            self.eat();
+        }
+        if self.peek(0) == '.' && self.peek(1).is_digit(10) {
+            self.eat();
+            while self.peek(0).is_digit(10) {
+                self.eat();
+            }
+        }
+        let number = self.lexeme();
+        let number: f64 = number.parse().unwrap();
+        return self.token_type_with_literal(TokenType::NUMBER, Some(Value::Float(number)));
+    }
+
     fn scan(&mut self) -> Token {
         let c = self.space();
         match c {
@@ -76,7 +91,24 @@ impl Lexer {
             '*' => self.token_type(TokenType::STAR),
             '/' => self.token_type(TokenType::SLASH),
             '%' => self.token_type(TokenType::PS),
-            _ => panic!("Error"),
+            _ => {
+                if c.is_digit(10) {
+                   return self.number();
+                }
+                panic!(format!("Unexpected character {}", c));
+            }
+        }
+    }
+}
+
+impl Iterator for Lexer {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let token = self.next();
+        match token.tt {
+            TokenType::EOL => None,
+            _ => Some(token),
         }
     }
 }

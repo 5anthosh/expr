@@ -1,5 +1,6 @@
 use crate::value::Value;
 
+#[derive(Debug)]
 pub enum TokenType {
     PLUS,
     STAR,
@@ -7,10 +8,12 @@ pub enum TokenType {
     SLASH,
     PS,
     EOL,
+    NUMBER,
 }
 
+#[derive(Debug)]
 pub struct Token {
-    tt: TokenType,
+    pub tt: TokenType,
     lexeme: String,
     literal: Option<Value>,
     start: usize,
