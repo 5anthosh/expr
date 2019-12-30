@@ -93,7 +93,7 @@ impl Lexer {
             '%' => self.token_type(TokenType::PS),
             _ => {
                 if c.is_digit(10) {
-                   return self.number();
+                    return self.number();
                 }
                 panic!(format!("Unexpected character {}", c));
             }

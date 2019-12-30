@@ -15,7 +15,7 @@ pub enum TokenType {
 pub struct Token {
     pub tt: TokenType,
     lexeme: String,
-    literal: Option<Value>,
+    pub literal: Option<Value>,
     start: usize,
     end: usize,
 }
