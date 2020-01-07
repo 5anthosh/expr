@@ -5,14 +5,18 @@ pub trait Expr {
     fn accept<V>(self, visitor: impl Visitor<V>) -> V;
 }
 
-pub struct Binary<'a, T: Expr> {
-    left: T,
-    right: T,
+pub struct Binary<'a> {
+    left: Box<ExprType<'a>>,
+    right: Box<ExprType<'a>>,
     operator: &'a Token,
 }
 
-impl<'a, T: Expr> Expr for Binary<'a, T> {
-    fn accept<V>(self, visitor: impl Visitor<V>) -> V {
+pub enum ExprType<'a> {
+    Binary(Binary<'a>),
+    Literal(Literal<'a>),
+}
+impl<'a> Expr for Binary<'a> {
+    fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
         return visitor.visit_binary_operation(self);
     }
 }
@@ -22,12 +26,12 @@ pub struct Literal<'a> {
 }
 
 impl<'a> Expr for Literal<'a> {
-    fn accept<V>(self, visitor: impl Visitor<V>) -> V {
+    fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
         return visitor.visit_literal(self);
     }
 }
 
 trait Visitor<T> {
-    fn visit_binary_operation(&self, expr: impl Expr) -> T;
-    fn visit_literal(&self, expr: impl Expr) -> T;
+    fn visit_binary_operation(&mut self, expr: impl Expr) -> T;
+    fn visit_literal(&mut self, expr: impl Expr) -> T;
 }

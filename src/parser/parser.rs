@@ -1,6 +1,6 @@
 use crate::lexer::token::{Token, TokenType};
 use crate::lexer::Lexer;
-use crate::parser::expr::{Binary, Expr, Literal};
+use crate::parser::expr::{Binary, Literal, ExprType};
 
 struct Parser {
     pub source: String,
@@ -10,39 +10,39 @@ struct Parser {
 }
 
 impl Parser {
-    fn addition(&mut self) -> Box<dyn Expr> {
+    fn addition(&mut self) -> ExprType {
         let left = self.multiply();
         if self.match_token(&[TokenType::PLUS, TokenType::MINUS]) {
             let operator = self.previous();
             let right = self.multiply();
-            return Box::new(Binary {
-                left,
-                right,
+            return ExprType::Binary(Binary {
+                left: Box::new(left),
+                right: Box::new(right),
                 operator,
             });
         }
-        return left;
+        return left
     }
-    fn multiply(&mut self) -> Box<dyn Expr> {
+    fn multiply(&mut self) -> ExprType  {
         let left = self.term();
         if self.match_token(&[TokenType::STAR, TokenType::PLUS]) {
             let operator = self.previous();
             let right = self.term();
-            return Box::new(Binary {
-                left,
-                right,
+            return ExprType::Binary(Binary{
+                left: Box::new(left),
+                right: Box::new(right),
                 operator,
             });
         }
         return left;
     }
 
-    fn term(&mut self) -> impl Expr {
+    fn term(&mut self) -> ExprType {
         if self.match_token(&[TokenType::NUMBER]) {
             let t = self.previous();
             match &t.literal {
                 Some(val) => {
-                    return Literal { value: val };
+                    return ExprType::Literal(Literal { value: val });
                 }
                 None => panic!("literal value is None but Token is number"),
             }

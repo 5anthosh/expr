@@ -65,10 +65,10 @@ impl Lexer {
         if self.is_at_end() {
             return Token::end_of_line();
         }
-        self.scan()
+        self.scan_token()
     }
 
-    pub fn number(&mut self) -> Token {
+    fn number(&mut self) -> Token {
         while self.peek(0).is_digit(10) {
             self.eat();
         }
@@ -83,7 +83,7 @@ impl Lexer {
         return self.token_type_with_literal(TokenType::NUMBER, Some(Value::Float(number)));
     }
 
-    fn scan(&mut self) -> Token {
+    fn scan_token(&mut self) -> Token {
         let c = self.space();
         match c {
             '+' => self.token_type(TokenType::PLUS),
