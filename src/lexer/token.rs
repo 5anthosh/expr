@@ -14,8 +14,7 @@ pub enum TokenType {
 #[derive(Debug)]
 pub struct Token {
     pub tt: TokenType,
-    lexeme: String,
-    pub literal: Option<Value>,
+    pub lexeme: String,
     start: usize,
     end: usize,
 }
@@ -25,22 +24,14 @@ impl Token {
         return Token {
             tt: TokenType::EOL,
             lexeme: String::default(),
-            literal: None,
             start: 0,
             end: 0,
         };
     }
-    pub fn new(
-        tt: TokenType,
-        lexeme: String,
-        literal: Option<Value>,
-        start: usize,
-        end: usize,
-    ) -> Token {
+    pub fn new(tt: TokenType, lexeme: String, start: usize, end: usize) -> Token {
         Token {
             tt,
             lexeme,
-            literal,
             start,
             end,
         }

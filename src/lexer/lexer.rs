@@ -42,14 +42,10 @@ impl Lexer {
             .collect::<String>()
     }
 
-    fn token_type_with_literal(&mut self, tt: TokenType, literal: Option<Value>) -> Token {
-        let token: Token = Token::new(tt, self.lexeme(), literal, self.start, self.current);
+    fn token_type(&mut self, tt: TokenType) -> Token {
+        let token: Token = Token::new(tt, self.lexeme(), self.start, self.current);
         self.start = self.current;
         return token;
-    }
-
-    fn token_type(&mut self, tt: TokenType) -> Token {
-        return self.token_type_with_literal(tt, None);
     }
 
     fn space(&mut self) -> char {
@@ -61,7 +57,7 @@ impl Lexer {
         return c;
     }
 
-    pub fn next(&mut self) -> Token {
+    pub fn next_token(&mut self) -> Token {
         if self.is_at_end() {
             return Token::end_of_line();
         }
@@ -78,9 +74,7 @@ impl Lexer {
                 self.eat();
             }
         }
-        let number = self.lexeme();
-        let number: f64 = number.parse().unwrap();
-        return self.token_type_with_literal(TokenType::NUMBER, Some(Value::Float(number)));
+        return self.token_type(TokenType::NUMBER);
     }
 
     fn scan_token(&mut self) -> Token {
@@ -105,7 +99,7 @@ impl Iterator for Lexer {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let token = self.next();
+        let token = self.next_token();
         match token.tt {
             TokenType::EOL => None,
             _ => Some(token),

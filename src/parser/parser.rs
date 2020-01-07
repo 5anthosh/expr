@@ -1,16 +1,34 @@
 use crate::lexer::token::{Token, TokenType};
 use crate::lexer::Lexer;
-use crate::parser::expr::{Binary, Literal, ExprType};
+use crate::parser::expr::{Binary, ExprType, Literal};
+use crate::value::Value;
+use std::cell::Cell;
 
-struct Parser {
+pub struct Parser {
     pub source: String,
-    lexer: Lexer,
-    n: usize,
+    n: Cell<usize>,
     tokens: Vec<Token>,
 }
 
 impl Parser {
-    fn addition(&mut self) -> ExprType {
+    pub fn new(source: String) -> Parser {
+        let mut tokens = Vec::new();
+        let lexer = Lexer::new(&source);
+        for token in lexer {
+            tokens.push(token);
+        }
+        Parser {
+            source,
+            n: Cell::new(0),
+            tokens,
+        }
+    }
+
+    pub fn parse(&self) -> ExprType {
+        self.addition()
+    }
+
+    fn addition(&self) -> ExprType {
         let left = self.multiply();
         if self.match_token(&[TokenType::PLUS, TokenType::MINUS]) {
             let operator = self.previous();
@@ -21,14 +39,14 @@ impl Parser {
                 operator,
             });
         }
-        return left
+        return left;
     }
-    fn multiply(&mut self) -> ExprType  {
+    fn multiply(&self) -> ExprType {
         let left = self.term();
         if self.match_token(&[TokenType::STAR, TokenType::PLUS]) {
             let operator = self.previous();
             let right = self.term();
-            return ExprType::Binary(Binary{
+            return ExprType::Binary(Binary {
                 left: Box::new(left),
                 right: Box::new(right),
                 operator,
@@ -37,20 +55,18 @@ impl Parser {
         return left;
     }
 
-    fn term(&mut self) -> ExprType {
+    fn term(&self) -> ExprType {
         if self.match_token(&[TokenType::NUMBER]) {
             let t = self.previous();
-            match &t.literal {
-                Some(val) => {
-                    return ExprType::Literal(Literal { value: val });
-                }
-                None => panic!("literal value is None but Token is number"),
-            }
+            let number: f64 = t.lexeme.parse().unwrap();
+            return ExprType::Literal(Literal {
+                value: Value::Float(number),
+            });
         }
         panic!("Unexpected token {:?}", self.peek());
     }
 
-    fn match_token(&mut self, types: &[TokenType]) -> bool {
+    fn match_token(&self, types: &[TokenType]) -> bool {
         for t in types.iter() {
             if self.check(t) {
                 self.increment();
@@ -59,7 +75,7 @@ impl Parser {
         }
         return false;
     }
-    fn check(&mut self, t: &TokenType) -> bool {
+    fn check(&self, t: &TokenType) -> bool {
         if self.at_end() {
             return false;
         }
@@ -72,39 +88,29 @@ impl Parser {
         }
     }
 
-    fn at_end(&mut self) -> bool {
+    fn at_end(&self) -> bool {
         if let None = self.next_token() {
             return true;
         }
         return false;
     }
-    fn next_token(&mut self) -> Option<&Token> {
-        if self.n > self.tokens.len() {
-            return Some(&self.tokens[self.n]);
-        }
+    fn next_token(&self) -> Option<&Token> {
         return self.get_token();
     }
 
-    fn get_token(&mut self) -> Option<&Token> {
-        let token = self.lexer.next();
-        match token.tt {
-            TokenType::EOL => {
-                return None;
-            }
-            _ => self.tokens.push(token),
-        };
-        return self.tokens.last();
+    fn get_token(&self) -> Option<&Token> {
+        self.tokens.get(self.n.get())
     }
 
     fn previous(&self) -> &Token {
-        return &self.tokens[self.n - 1];
+        return &self.tokens[self.n.get() - 1];
     }
 
-    fn peek(&mut self) -> Option<&Token> {
+    fn peek(&self) -> Option<&Token> {
         return self.next_token();
     }
 
-    fn increment(&mut self) {
-        self.n += 1;
+    fn increment(&self) {
+        self.n.set(self.n.get() + 1);
     }
 }
