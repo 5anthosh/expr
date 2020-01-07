@@ -80,6 +80,14 @@ impl Parser {
                 value: Value::Float(number),
             }));
         }
+
+        if self.match_token(&[TokenType::String]) {
+            let t = self.previous();
+            let string_value = &t.lexeme[1..t.lexeme.len() - 1];
+            return Ok(ExprType::Literal(Literal {
+                value: Value::String(String::from(string_value)),
+            }));
+        }
         if self.match_token(&[TokenType::OpenParen]) {
             let group = ExprType::Group(Group {
                 expression: Box::new(self.expression()?),

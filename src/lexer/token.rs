@@ -9,6 +9,13 @@ pub enum TokenType {
     NUMBER,
     OpenParen,
     CloseParen,
+    True,
+    False,
+    Nil,
+    Print,
+    Var,
+    String,
+    Identifier,
 }
 
 #[derive(Debug)]

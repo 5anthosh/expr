@@ -1,11 +1,13 @@
 use crate::error::ExprError;
 use crate::lexer::token::{Token, TokenType};
+use crate::tully::Tully;
 
 pub struct Lexer {
     expr_chars: Vec<char>,
     length: usize,
     start: usize,
     current: usize,
+    line: usize,
 }
 
 impl Lexer {
@@ -16,6 +18,7 @@ impl Lexer {
             expr_chars: a,
             start: 0,
             current: 0,
+            line: 0,
         };
     }
 
@@ -80,6 +83,34 @@ impl Lexer {
         return self.token_type(TokenType::NUMBER);
     }
 
+    fn identifier(&mut self) -> Token {
+        if self.peek(0).is_alphanumeric() {
+            self.eat();
+        }
+        let lexeme = self.lexeme();
+        match Tully::keywords_to_token_type(&lexeme[..]) {
+            Some(tt) => self.token_type(tt),
+            None => self.token_type(TokenType::Identifier),
+        }
+    }
+
+    fn scan_string(&mut self) -> Result<Token, ExprError> {
+        while self.peek(0) != '"' && !self.is_at_end() {
+            if self.peek(0) == '\n' {
+                self.line += 1;
+                self.eat();
+            }
+            self.eat();
+        }
+        if self.is_at_end() {
+            return Err(ExprError::LexicalErrorMessage(String::from(
+                "Unterminated string",
+            )));
+        }
+        self.eat();
+        Ok(self.token_type(TokenType::String))
+    }
+
     fn scan_token(&mut self) -> Result<Token, ExprError> {
         let c = self.space();
         match c {
@@ -90,9 +121,13 @@ impl Lexer {
             '%' => Ok(self.token_type(TokenType::PS)),
             '(' => Ok(self.token_type(TokenType::OpenParen)),
             ')' => Ok(self.token_type(TokenType::CloseParen)),
+            '"' => self.scan_string(),
             _ => {
                 if c.is_digit(10) {
                     return Ok(self.number());
+                }
+                if c.is_alphanumeric() {
+                    return Ok(self.identifier());
                 }
                 return Err(ExprError::LexicalErrorMessage(format!(
                     "Unexpected character {}",
@@ -103,7 +138,7 @@ impl Lexer {
     }
 }
 
-impl Iterator for Lexer {
+impl<'a> Iterator for Lexer {
     type Item = Result<Token, ExprError>;
 
     fn next(&mut self) -> Option<Self::Item> {

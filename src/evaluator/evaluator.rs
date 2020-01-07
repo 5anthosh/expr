@@ -30,7 +30,7 @@ impl Evaluator {
     }
 }
 
-impl Visitor<Result<Value, ExprError>> for Evaluator {
+impl<'a> Visitor<Result<Value, ExprError>> for Evaluator {
     fn visit_binary_operation(&mut self, expr: Binary) -> Result<Value, ExprError> {
         let left = self.accept(*expr.left)?;
         let right = self.accept(*expr.right)?;
