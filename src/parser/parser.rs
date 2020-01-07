@@ -1,6 +1,7 @@
 use crate::lexer::token::{Token, TokenType};
 use crate::lexer::Lexer;
-use crate::parser::expr::{Binary, ExprType, Literal};
+use crate::parser::expr::{Binary, ExprType, Group, Literal};
+use crate::parser::Unary;
 use crate::value::Value;
 use std::cell::Cell;
 
@@ -25,12 +26,16 @@ impl Parser {
     }
 
     pub fn parse(&self) -> ExprType {
+        self.expression()
+    }
+
+    fn expression(&self) -> ExprType {
         self.addition()
     }
 
     fn addition(&self) -> ExprType {
         let left = self.multiply();
-        if self.match_token(&[TokenType::PLUS, TokenType::MINUS]) {
+        while self.match_token(&[TokenType::PLUS, TokenType::MINUS]) {
             let operator = self.previous();
             let right = self.multiply();
             return ExprType::Binary(Binary {
@@ -42,10 +47,10 @@ impl Parser {
         return left;
     }
     fn multiply(&self) -> ExprType {
-        let left = self.term();
-        if self.match_token(&[TokenType::STAR, TokenType::PLUS]) {
+        let left = self.unary();
+        while self.match_token(&[TokenType::STAR, TokenType::PLUS]) {
             let operator = self.previous();
-            let right = self.term();
+            let right = self.unary();
             return ExprType::Binary(Binary {
                 left: Box::new(left),
                 right: Box::new(right),
@@ -55,6 +60,18 @@ impl Parser {
         return left;
     }
 
+    fn unary(&self) -> ExprType {
+        while self.match_token(&[TokenType::PLUS, TokenType::MINUS]) {
+            let operator = self.previous();
+            let expression = self.unary();
+            return ExprType::Unary(Unary {
+                expression: Box::new(expression),
+                operator,
+            });
+        }
+        self.term()
+    }
+
     fn term(&self) -> ExprType {
         if self.match_token(&[TokenType::NUMBER]) {
             let t = self.previous();
@@ -62,6 +79,15 @@ impl Parser {
             return ExprType::Literal(Literal {
                 value: Value::Float(number),
             });
+        }
+        if self.match_token(&[TokenType::OpenParen]) {
+            let group = ExprType::Group(Group {
+                expression: Box::new(self.expression()),
+            });
+            if self.match_token(&[TokenType::CloseParen]) {
+                return group;
+            }
+            panic!("Expecting ')'");
         }
         panic!("Unexpected token {:?}", self.peek());
     }
@@ -80,10 +106,7 @@ impl Parser {
             return false;
         }
         match self.peek() {
-            Some(t1) => match &t1.tt {
-                t => true,
-                _ => false,
-            },
+            Some(t1) => std::mem::discriminant(&t1.tt) == std::mem::discriminant(t),
             _ => false,
         }
     }

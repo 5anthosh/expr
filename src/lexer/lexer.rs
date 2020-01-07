@@ -1,5 +1,4 @@
 use crate::lexer::token::{Token, TokenType};
-use crate::value::Value;
 
 pub struct Lexer {
     expr_chars: Vec<char>,
@@ -24,6 +23,9 @@ impl Lexer {
     }
 
     fn eat(&mut self) -> char {
+        if self.is_at_end() {
+            return '\0';
+        }
         self.current += 1;
         self.expr_chars[self.current - 1]
     }
@@ -85,6 +87,8 @@ impl Lexer {
             '*' => self.token_type(TokenType::STAR),
             '/' => self.token_type(TokenType::SLASH),
             '%' => self.token_type(TokenType::PS),
+            '(' => self.token_type(TokenType::OpenParen),
+            ')' => self.token_type(TokenType::CloseParen),
             _ => {
                 if c.is_digit(10) {
                     return self.number();

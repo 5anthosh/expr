@@ -1,5 +1,3 @@
-use crate::value::Value;
-
 #[derive(Debug)]
 pub enum TokenType {
     PLUS,
@@ -9,6 +7,8 @@ pub enum TokenType {
     PS,
     EOL,
     NUMBER,
+    OpenParen,
+    CloseParen,
 }
 
 #[derive(Debug)]
