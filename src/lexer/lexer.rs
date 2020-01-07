@@ -1,3 +1,4 @@
+use crate::error::ExprError;
 use crate::lexer::token::{Token, TokenType};
 
 pub struct Lexer {
@@ -59,9 +60,9 @@ impl Lexer {
         return c;
     }
 
-    pub fn next_token(&mut self) -> Token {
+    pub fn next_token(&mut self) -> Result<Token, ExprError> {
         if self.is_at_end() {
-            return Token::end_of_line();
+            return Ok(Token::end_of_line());
         }
         self.scan_token()
     }
@@ -79,34 +80,41 @@ impl Lexer {
         return self.token_type(TokenType::NUMBER);
     }
 
-    fn scan_token(&mut self) -> Token {
+    fn scan_token(&mut self) -> Result<Token, ExprError> {
         let c = self.space();
         match c {
-            '+' => self.token_type(TokenType::PLUS),
-            '-' => self.token_type(TokenType::MINUS),
-            '*' => self.token_type(TokenType::STAR),
-            '/' => self.token_type(TokenType::SLASH),
-            '%' => self.token_type(TokenType::PS),
-            '(' => self.token_type(TokenType::OpenParen),
-            ')' => self.token_type(TokenType::CloseParen),
+            '+' => Ok(self.token_type(TokenType::PLUS)),
+            '-' => Ok(self.token_type(TokenType::MINUS)),
+            '*' => Ok(self.token_type(TokenType::STAR)),
+            '/' => Ok(self.token_type(TokenType::SLASH)),
+            '%' => Ok(self.token_type(TokenType::PS)),
+            '(' => Ok(self.token_type(TokenType::OpenParen)),
+            ')' => Ok(self.token_type(TokenType::CloseParen)),
             _ => {
                 if c.is_digit(10) {
-                    return self.number();
+                    return Ok(self.number());
                 }
-                panic!(format!("Unexpected character {}", c));
+                return Err(ExprError::LexicalErrorMessage(format!(
+                    "Unexpected character {}",
+                    c
+                )));
             }
         }
     }
 }
 
 impl Iterator for Lexer {
-    type Item = Token;
+    type Item = Result<Token, ExprError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let token = self.next_token();
+        let token = match token {
+            Ok(token) => token,
+            Err(e) => return Some(Err(e)),
+        };
         match token.tt {
             TokenType::EOL => None,
-            _ => Some(token),
+            _ => Some(Ok(token)),
         }
     }
 }

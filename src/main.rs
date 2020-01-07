@@ -17,15 +17,22 @@ fn main() {
                 }
             }
             _ => {
-                println!("Unable to read from command line");
+                eprintln!("Unable to read from command line");
                 break;
             }
         }
         let mut evaluator = Evaluator::new(&expression.trim());
         let value = evaluator.eval();
+        let value = match value {
+            Ok(value) => value,
+            Err(e) => {
+                eprintln!("{}", e.to_string());
+                continue;
+            }
+        };
         match value {
             Value::Float(val) => println!("{}", val),
-            _ => panic!("Unexpected value"),
+            _ => eprintln!("Unexpected value"),
         };
     }
 }

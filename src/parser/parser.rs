@@ -1,3 +1,4 @@
+use crate::error::ExprError;
 use crate::lexer::token::{Token, TokenType};
 use crate::lexer::Lexer;
 use crate::parser::expr::{Binary, ExprType, Group, Literal};
@@ -13,83 +14,85 @@ pub struct Parser {
 
 impl Parser {
     pub fn new(source: String) -> Parser {
-        let mut tokens = Vec::new();
-        let lexer = Lexer::new(&source);
-        for token in lexer {
-            tokens.push(token);
-        }
         Parser {
             source,
             n: Cell::new(0),
-            tokens,
+            tokens: Vec::new(),
         }
     }
 
-    pub fn parse(&self) -> ExprType {
+    pub fn parse(&mut self) -> Result<ExprType, ExprError> {
+        let lexer = Lexer::new(&self.source);
+        for token in lexer {
+            self.tokens.push(token?);
+        }
         self.expression()
     }
 
-    fn expression(&self) -> ExprType {
+    fn expression(&self) -> Result<ExprType, ExprError> {
         self.addition()
     }
 
-    fn addition(&self) -> ExprType {
-        let left = self.multiply();
+    fn addition(&self) -> Result<ExprType, ExprError> {
+        let left = self.multiply()?;
         while self.match_token(&[TokenType::PLUS, TokenType::MINUS]) {
             let operator = self.previous();
-            let right = self.multiply();
-            return ExprType::Binary(Binary {
+            let right = self.multiply()?;
+            return Ok(ExprType::Binary(Binary {
                 left: Box::new(left),
                 right: Box::new(right),
                 operator,
-            });
+            }));
         }
-        return left;
+        return Ok(left);
     }
-    fn multiply(&self) -> ExprType {
-        let left = self.unary();
+    fn multiply(&self) -> Result<ExprType, ExprError> {
+        let left = self.unary()?;
         while self.match_token(&[TokenType::STAR, TokenType::PLUS]) {
             let operator = self.previous();
-            let right = self.unary();
-            return ExprType::Binary(Binary {
+            let right = self.unary()?;
+            return Ok(ExprType::Binary(Binary {
                 left: Box::new(left),
                 right: Box::new(right),
                 operator,
-            });
+            }));
         }
-        return left;
+        return Ok(left);
     }
 
-    fn unary(&self) -> ExprType {
+    fn unary(&self) -> Result<ExprType, ExprError> {
         while self.match_token(&[TokenType::PLUS, TokenType::MINUS]) {
             let operator = self.previous();
-            let expression = self.unary();
-            return ExprType::Unary(Unary {
+            let expression = self.unary()?;
+            return Ok(ExprType::Unary(Unary {
                 expression: Box::new(expression),
                 operator,
-            });
+            }));
         }
         self.term()
     }
 
-    fn term(&self) -> ExprType {
+    fn term(&self) -> Result<ExprType, ExprError> {
         if self.match_token(&[TokenType::NUMBER]) {
             let t = self.previous();
             let number: f64 = t.lexeme.parse().unwrap();
-            return ExprType::Literal(Literal {
+            return Ok(ExprType::Literal(Literal {
                 value: Value::Float(number),
-            });
+            }));
         }
         if self.match_token(&[TokenType::OpenParen]) {
             let group = ExprType::Group(Group {
-                expression: Box::new(self.expression()),
+                expression: Box::new(self.expression()?),
             });
             if self.match_token(&[TokenType::CloseParen]) {
-                return group;
+                return Ok(group);
             }
-            panic!("Expecting ')'");
+            return Err(ExprError::ParserErrorMessage(String::from("Expecting ')'")));
         }
-        panic!("Unexpected token {:?}", self.peek());
+        Err(ExprError::ParserErrorMessage(String::from(format!(
+            "Unexpected token {:?}",
+            self.peek()
+        ))))
     }
 
     fn match_token(&self, types: &[TokenType]) -> bool {
