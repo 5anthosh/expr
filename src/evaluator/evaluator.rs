@@ -1,6 +1,6 @@
 use crate::error::ExprError;
 use crate::lexer::token::TokenType;
-use crate::parser::{Binary, ExprType, Group, Literal, Parser, Unary, Visitor};
+use crate::parser::{Binary, ExprType, Expression, Group, Literal, Parser, Print, Unary, Visitor};
 use crate::value::Value;
 
 pub struct Evaluator {
@@ -17,6 +17,7 @@ impl Evaluator {
     pub fn eval(&mut self) -> Result<Value, ExprError> {
         let mut parser = Parser::new(self.source.clone());
         let ast = parser.parse()?;
+        // println!("{:?}", ast);
         self.accept(ast)
     }
 
@@ -26,6 +27,8 @@ impl Evaluator {
             ExprType::Literal(lit) => self.visit_literal(lit),
             ExprType::Unary(unary) => self.visit_unary(unary),
             ExprType::Group(group) => self.visit_group(group),
+            ExprType::Print(print) => self.visit_print(print),
+            ExprType::ExpressionStmt(expression) => self.visit_expression(expression),
         }
     }
 
@@ -73,33 +76,27 @@ impl<'a> Visitor<Result<Value, ExprError>> for Evaluator {
         let right = self.accept(*expr.right)?;
         let operation = expr.operator;
         match operation.tt {
-            TokenType::Plus => {
-                return match left {
-                    Value::String(value) => {
-                        return match right {
-                            Value::String(value2) => Ok(Value::String(value + &value2)),
-                            Value::Float(value2) => {
-                                Ok(Value::String(format!("{}{}", value, value2)))
-                            }
-                            _ => Err(ExprError::RunTimeMessage(String::from(
-                                "Operators must be  strings or numbers for '+' ",
-                            ))),
-                        }
-                    }
-                    Value::Float(value) => match right {
-                        Value::String(value2) => {
-                            return Ok(Value::String(format!("{}{}", value, value2)))
-                        }
-                        Value::Float(value2) => Ok(Value::Float(value + value2)),
-                        _ => Err(ExprError::RunTimeMessage(String::from(
-                            "Operators must be  strings or numbers for '+' ",
-                        ))),
-                    },
+            TokenType::Plus => match left {
+                Value::String(value) => match right {
+                    Value::String(value2) => Ok(Value::String(value + &value2)),
+                    Value::Float(value2) => Ok(Value::String(format!("{}{}", value, value2))),
                     _ => Err(ExprError::RunTimeMessage(String::from(
                         "Operators must be  strings or numbers for '+' ",
                     ))),
-                }
-            }
+                },
+                Value::Float(value) => match right {
+                    Value::String(value2) => {
+                        return Ok(Value::String(format!("{}{}", value, value2)))
+                    }
+                    Value::Float(value2) => Ok(Value::Float(value + value2)),
+                    _ => Err(ExprError::RunTimeMessage(String::from(
+                        "Operators must be  strings or numbers for '+' ",
+                    ))),
+                },
+                _ => Err(ExprError::RunTimeMessage(String::from(
+                    "Operators must be  strings or numbers for '+' ",
+                ))),
+            },
             TokenType::Minus => {
                 let (left_value, right_value) = Evaluator::check_numbers(left, right)?;
                 Ok(Value::Float(left_value - right_value))
@@ -168,5 +165,16 @@ impl<'a> Visitor<Result<Value, ExprError>> for Evaluator {
 
     fn visit_group(&mut self, expr: Group) -> Result<Value, ExprError> {
         self.accept(*expr.expression)
+    }
+
+    fn visit_expression(&mut self, expr: Expression) -> Result<Value, ExprError> {
+        let _ = self.accept(*expr.expression)?;
+        return Ok(Value::Nil);
+    }
+
+    fn visit_print(&mut self, expr: Print) -> Result<Value, ExprError> {
+        let value = self.accept(*expr.expression)?;
+        println!("{}", value.to_string());
+        return Ok(Value::Nil);
     }
 }

@@ -28,3 +28,14 @@ impl Value {
         };
     }
 }
+
+impl ToString for Value {
+    fn to_string(&self) -> String {
+        match self {
+            Value::Nil => String::from("nil"),
+            Value::Float(value) => format!("{}", value),
+            Value::Boolean(value) => format!("{}", value),
+            Value::String(value) => value.to_string(),
+        }
+    }
+}

@@ -10,6 +10,8 @@ pub trait Visitor<T> {
     fn visit_literal(&mut self, expr: Literal) -> T;
     fn visit_unary(&mut self, expr: Unary) -> T;
     fn visit_group(&mut self, expr: Group) -> T;
+    fn visit_expression(&mut self, expr: Expression) -> T;
+    fn visit_print(&mut self, expr: Print) -> T;
 }
 
 #[derive(Debug)]
@@ -25,6 +27,8 @@ pub enum ExprType<'a> {
     Literal(Literal),
     Unary(Unary<'a>),
     Group(Group<'a>),
+    ExpressionStmt(Expression<'a>),
+    Print(Print<'a>),
 }
 
 impl<'a> Expr for Binary<'a> {
@@ -63,5 +67,27 @@ pub struct Group<'a> {
 impl<'a> Expr for Group<'a> {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
         return visitor.visit_group(self);
+    }
+}
+
+#[derive(Debug)]
+pub struct Expression<'a> {
+    pub expression: Box<ExprType<'a>>,
+}
+
+impl<'a> Expr for Expression<'a> {
+    fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
+        return visitor.visit_expression(self);
+    }
+}
+
+#[derive(Debug)]
+pub struct Print<'a> {
+    pub expression: Box<ExprType<'a>>,
+}
+
+impl<'a> Expr for Print<'a> {
+    fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
+        return visitor.visit_print(self);
     }
 }

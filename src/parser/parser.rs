@@ -1,12 +1,12 @@
 use crate::error::ExprError;
 use crate::lexer::token::TokenType::{
-    Bang, BangEqual, Equal, EqualEqual, Greater, GreaterEqual, Lesser, LesserEqual, Minus, Plus,
-    Slash, Star,
+    Bang, BangEqual, EqualEqual, Greater, GreaterEqual, Lesser, LesserEqual, Minus, Plus, Print,
+    SemiColon, Slash, Star,
 };
 use crate::lexer::token::{Token, TokenType};
 use crate::lexer::Lexer;
 use crate::parser::expr::{Binary, ExprType, Group, Literal};
-use crate::parser::Unary;
+use crate::parser::{self, Expression, Unary};
 use crate::value::Value;
 use std::cell::Cell;
 
@@ -30,9 +30,39 @@ impl Parser {
         for token in lexer {
             self.tokens.push(token?);
         }
-        self.expression()
+        // println!("{:?}", self.tokens);
+        self.statement()
     }
 
+    fn statement(&self) -> Result<ExprType, ExprError> {
+        if self.match_token(&[Print]) {
+            return self.print_statement();
+        }
+        self.expression_statement()
+    }
+
+    fn print_statement(&self) -> Result<ExprType, ExprError> {
+        let expr = self.expression()?;
+        if self.match_token(&[SemiColon]) {
+            return Ok(ExprType::Print(parser::Print {
+                expression: Box::new(expr),
+            }));
+        }
+        return Err(ExprError::ParserErrorMessage(String::from(
+            "Expect ';' after value",
+        )));
+    }
+    fn expression_statement(&self) -> Result<ExprType, ExprError> {
+        let expr = self.expression()?;
+        if self.match_token(&[SemiColon]) {
+            return Ok(ExprType::ExpressionStmt(Expression {
+                expression: Box::new(expr),
+            }));
+        }
+        return Err(ExprError::ParserErrorMessage(String::from(
+            "Expect ';' after expression ",
+        )));
+    }
     fn expression(&self) -> Result<ExprType, ExprError> {
         self.equality()
     }

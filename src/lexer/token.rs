@@ -24,6 +24,7 @@ pub enum TokenType {
     GreaterEqual,
     Lesser,
     LesserEqual,
+    SemiColon,
 }
 
 #[derive(Debug)]

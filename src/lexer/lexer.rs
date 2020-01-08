@@ -122,6 +122,7 @@ impl Lexer {
             '%' => Ok(self.token_type(TokenType::Percentage)),
             '(' => Ok(self.token_type(TokenType::OpenParen)),
             ')' => Ok(self.token_type(TokenType::CloseParen)),
+            ';' => Ok(self.token_type(TokenType::SemiColon)),
             '=' => {
                 if self.peek(0) == '=' {
                     self.eat();
