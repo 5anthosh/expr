@@ -1,5 +1,5 @@
 [package]
-name = "expr"
+name = "tully"
 version = "0.1.0"
 authors = ["Santhosh <santhoshkumarr1096@gmail.com>"]
 edition = "2018"

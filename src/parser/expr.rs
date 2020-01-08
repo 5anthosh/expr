@@ -12,6 +12,9 @@ pub trait Visitor<T> {
     fn visit_group(&mut self, expr: Group) -> T;
     fn visit_expression(&mut self, expr: Expression) -> T;
     fn visit_print(&mut self, expr: Print) -> T;
+    fn visit_variable(&mut self, expr: Variable) -> T;
+    fn visit_var(&mut self, expr: Var) -> T;
+    fn visit_assign(&mut self, expr: Assign) -> T;
 }
 
 #[derive(Debug)]
@@ -29,6 +32,9 @@ pub enum ExprType<'a> {
     Group(Group<'a>),
     ExpressionStmt(Expression<'a>),
     Print(Print<'a>),
+    Variable(Variable),
+    Var(Var<'a>),
+    Assign(Assign<'a>),
 }
 
 impl<'a> Expr for Binary<'a> {
@@ -89,5 +95,40 @@ pub struct Print<'a> {
 impl<'a> Expr for Print<'a> {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
         return visitor.visit_print(self);
+    }
+}
+
+#[derive(Debug)]
+pub struct Variable {
+    pub name: String,
+}
+
+impl Expr for Variable {
+    fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
+        return visitor.visit_variable(self);
+    }
+}
+
+#[derive(Debug)]
+pub struct Var<'a> {
+    pub name: String,
+    pub initializer: Option<Box<ExprType<'a>>>,
+}
+
+impl<'a> Expr for Var<'a> {
+    fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
+        return visitor.visit_var(self);
+    }
+}
+
+#[derive(Debug)]
+pub struct Assign<'a> {
+    pub name: String,
+    pub initializer: Box<ExprType<'a>>,
+}
+
+impl<'a> Expr for Assign<'a> {
+    fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
+        return visitor.visit_assign(self);
     }
 }

@@ -9,6 +9,7 @@ impl Tully {
             "false" => Some(TokenType::False),
             "nil" => Some(TokenType::Nil),
             "print" => Some(TokenType::Print),
+            "var" => Some(TokenType::Var),
             _ => None,
         }
     }

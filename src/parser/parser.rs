@@ -1,12 +1,12 @@
 use crate::error::ExprError;
 use crate::lexer::token::TokenType::{
-    Bang, BangEqual, EqualEqual, Greater, GreaterEqual, Lesser, LesserEqual, Minus, Plus, Print,
-    SemiColon, Slash, Star,
+    Bang, BangEqual, Equal, EqualEqual, Greater, GreaterEqual, Identifier, Lesser, LesserEqual,
+    Minus, Plus, Print, SemiColon, Slash, Star,
 };
 use crate::lexer::token::{Token, TokenType};
 use crate::lexer::Lexer;
 use crate::parser::expr::{Binary, ExprType, Group, Literal};
-use crate::parser::{self, Expression, Unary};
+use crate::parser::{self, Assign, Expression, Unary, Var, Variable};
 use crate::value::Value;
 use std::cell::Cell;
 
@@ -25,20 +25,58 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) -> Result<ExprType, ExprError> {
+    pub fn parse(&mut self) -> Result<Vec<ExprType>, ExprError> {
         let lexer = Lexer::new(&self.source);
         for token in lexer {
             self.tokens.push(token?);
         }
+
+        let mut statements = Vec::new();
+        while !self.at_end() {
+            statements.push(self.statement()?);
+        }
         // println!("{:?}", self.tokens);
-        self.statement()
+        Ok(statements)
     }
 
     fn statement(&self) -> Result<ExprType, ExprError> {
         if self.match_token(&[Print]) {
             return self.print_statement();
         }
+        if self.match_token(&[TokenType::Var]) {
+            return self.var_statement();
+        }
         self.expression_statement()
+    }
+
+    fn var_statement(&self) -> Result<ExprType, ExprError> {
+        if self.match_token(&[Identifier]) {
+            let t = self.previous();
+            if self.match_token(&[Equal]) {
+                let value = self.expression()?;
+                if self.match_token(&[SemiColon]) {
+                    return Ok(ExprType::Var(Var {
+                        name: t.lexeme.clone(),
+                        initializer: Some(Box::new(value)),
+                    }));
+                }
+                return Err(ExprError::ParserErrorMessage(String::from(
+                    "Expect ';' after variable declaration",
+                )));
+            }
+            if self.match_token(&[SemiColon]) {
+                return Ok(ExprType::Var(Var {
+                    name: t.lexeme.clone(),
+                    initializer: None,
+                }));
+            }
+            return Err(ExprError::ParserErrorMessage(String::from(
+                "Expect ';' after variable declaration",
+            )));
+        }
+        Err(ExprError::ParserErrorMessage(String::from(
+            "Expecting variable name",
+        )))
     }
 
     fn print_statement(&self) -> Result<ExprType, ExprError> {
@@ -60,11 +98,31 @@ impl Parser {
             }));
         }
         return Err(ExprError::ParserErrorMessage(String::from(
-            "Expect ';' after expression ",
+            "Expect ';' after expression",
         )));
     }
     fn expression(&self) -> Result<ExprType, ExprError> {
-        self.equality()
+        self.assignment()
+    }
+
+    fn assignment(&self) -> Result<ExprType, ExprError> {
+        let left = self.equality()?;
+        if self.match_token(&[Equal]) {
+            return match &left {
+                ExprType::Variable(var) => {
+                    let name = var.name.clone();
+                    let value = self.assignment()?;
+                    Ok(ExprType::Assign(Assign {
+                        name,
+                        initializer: Box::new(value),
+                    }))
+                }
+                _ => Err(ExprError::ParserErrorMessage(String::from(
+                    "Expecting variable in left side of assignment",
+                ))),
+            };
+        }
+        return Ok(left);
     }
 
     fn equality(&self) -> Result<ExprType, ExprError> {
@@ -166,6 +224,13 @@ impl Parser {
 
         if self.match_token(&[TokenType::Nil]) {
             return Ok(ExprType::Literal(Literal { value: Value::Nil }));
+        }
+
+        if self.match_token(&[TokenType::Identifier]) {
+            let t = self.previous();
+            return Ok(ExprType::Variable(Variable {
+                name: t.lexeme.clone(),
+            }));
         }
 
         if self.match_token(&[TokenType::OpenParen]) {

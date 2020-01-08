@@ -1,10 +1,29 @@
-use expr::evaluator::Evaluator;
-use expr::value::Value;
+use tully::evaluator::Evaluator;
 use std::io;
 use std::io::Write;
+use std::env;
+use std::fs;
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    run(args);
+}
+
+fn run(args: Vec<String>) {
+    if args.len() == 1 {
+        command_line();
+        return;
+    }
+    if args.len() == 2 {
+        read_from_file(&args[1]);
+        return;
+    }
+    eprintln!("Usage : Tully [script]")
+}
+
+fn command_line() {
     println!("Math expression evaluator");
+    let mut evaluator = Evaluator::new();
     loop {
         print!("> ");
         let _ = io::stdout().flush();
@@ -21,20 +40,17 @@ fn main() {
                 break;
             }
         }
-        let mut evaluator = Evaluator::new(&expression.trim());
-        let value = evaluator.eval();
-        let value = match value {
-            Ok(value) => value,
-            Err(e) => {
-                eprintln!("{}", e.to_string());
-                continue;
-            }
-        };
-        match value {
-            Value::Float(val) => println!("{}", val),
-            Value::String(string_value) => println!("{}", string_value),
-            Value::Boolean(boolean_value) => println!("{}", boolean_value),
-            Value::Nil => println!("nil"),
-        };
+        evaluator.eval(expression);
     }
+}
+
+
+fn read_from_file(name: &String) {
+    let contents = fs::read_to_string(name);
+    match contents {
+        Ok(source) => {
+            Evaluator::new().eval(source);
+        }
+        Err(e) => eprintln!("Unable to read from file {}", e.to_string())
+    };
 }

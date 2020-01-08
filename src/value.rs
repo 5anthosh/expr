@@ -1,9 +1,23 @@
+use std::rc::Rc;
+
 #[derive(Debug)]
 pub enum Value {
     Boolean(bool),
     Float(f64),
     String(String),
     Nil,
+}
+
+pub struct Constants {
+    pub nil: Rc<Value>,
+}
+
+impl Constants {
+    pub fn new() -> Constants {
+        Constants {
+            nil: Rc::new(Value::Nil),
+        }
+    }
 }
 
 impl Value {
