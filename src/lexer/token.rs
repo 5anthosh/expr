@@ -1,12 +1,12 @@
 #[derive(Debug)]
 pub enum TokenType {
-    PLUS,
-    STAR,
-    MINUS,
-    SLASH,
-    PS,
+    Plus,
+    Star,
+    Minus,
+    Slash,
+    Percentage,
     EOL,
-    NUMBER,
+    Number,
     OpenParen,
     CloseParen,
     True,
@@ -16,6 +16,14 @@ pub enum TokenType {
     Var,
     String,
     Identifier,
+    Equal,
+    EqualEqual,
+    Bang,
+    BangEqual,
+    Greater,
+    GreaterEqual,
+    Lesser,
+    LesserEqual,
 }
 
 #[derive(Debug)]

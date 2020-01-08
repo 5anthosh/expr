@@ -33,7 +33,8 @@ fn main() {
         match value {
             Value::Float(val) => println!("{}", val),
             Value::String(string_value) => println!("{}", string_value),
-            _ => eprintln!("Unexpected value"),
+            Value::Boolean(boolean_value) => println!("{}", boolean_value),
+            Value::Nil => println!("nil"),
         };
     }
 }

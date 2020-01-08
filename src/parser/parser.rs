@@ -1,4 +1,8 @@
 use crate::error::ExprError;
+use crate::lexer::token::TokenType::{
+    Bang, BangEqual, Equal, EqualEqual, Greater, GreaterEqual, Lesser, LesserEqual, Minus, Plus,
+    Slash, Star,
+};
 use crate::lexer::token::{Token, TokenType};
 use crate::lexer::Lexer;
 use crate::parser::expr::{Binary, ExprType, Group, Literal};
@@ -30,12 +34,40 @@ impl Parser {
     }
 
     fn expression(&self) -> Result<ExprType, ExprError> {
-        self.addition()
+        self.equality()
+    }
+
+    fn equality(&self) -> Result<ExprType, ExprError> {
+        let left = self.comparator()?;
+        while self.match_token(&[EqualEqual, BangEqual]) {
+            let operator = self.previous();
+            let right = self.comparator()?;
+            return Ok(ExprType::Binary(Binary {
+                left: Box::new(left),
+                right: Box::new(right),
+                operator,
+            }));
+        }
+        return Ok(left);
+    }
+
+    fn comparator(&self) -> Result<ExprType, ExprError> {
+        let left = self.addition()?;
+        while self.match_token(&[Greater, GreaterEqual, Lesser, LesserEqual]) {
+            let operator = self.previous();
+            let right = self.addition()?;
+            return Ok(ExprType::Binary(Binary {
+                left: Box::new(left),
+                right: Box::new(right),
+                operator,
+            }));
+        }
+        return Ok(left);
     }
 
     fn addition(&self) -> Result<ExprType, ExprError> {
         let left = self.multiply()?;
-        while self.match_token(&[TokenType::PLUS, TokenType::MINUS]) {
+        while self.match_token(&[Plus, Minus]) {
             let operator = self.previous();
             let right = self.multiply()?;
             return Ok(ExprType::Binary(Binary {
@@ -46,9 +78,10 @@ impl Parser {
         }
         return Ok(left);
     }
+
     fn multiply(&self) -> Result<ExprType, ExprError> {
         let left = self.unary()?;
-        while self.match_token(&[TokenType::STAR, TokenType::PLUS]) {
+        while self.match_token(&[Star, Slash]) {
             let operator = self.previous();
             let right = self.unary()?;
             return Ok(ExprType::Binary(Binary {
@@ -61,7 +94,7 @@ impl Parser {
     }
 
     fn unary(&self) -> Result<ExprType, ExprError> {
-        while self.match_token(&[TokenType::PLUS, TokenType::MINUS]) {
+        while self.match_token(&[Plus, Minus, Bang]) {
             let operator = self.previous();
             let expression = self.unary()?;
             return Ok(ExprType::Unary(Unary {
@@ -73,7 +106,7 @@ impl Parser {
     }
 
     fn term(&self) -> Result<ExprType, ExprError> {
-        if self.match_token(&[TokenType::NUMBER]) {
+        if self.match_token(&[TokenType::Number]) {
             let t = self.previous();
             let number: f64 = t.lexeme.parse().unwrap();
             return Ok(ExprType::Literal(Literal {
@@ -88,6 +121,23 @@ impl Parser {
                 value: Value::String(String::from(string_value)),
             }));
         }
+
+        if self.match_token(&[TokenType::True]) {
+            return Ok(ExprType::Literal(Literal {
+                value: Value::Boolean(true),
+            }));
+        }
+
+        if self.match_token(&[TokenType::False]) {
+            return Ok(ExprType::Literal(Literal {
+                value: Value::Boolean(false),
+            }));
+        }
+
+        if self.match_token(&[TokenType::Nil]) {
+            return Ok(ExprType::Literal(Literal { value: Value::Nil }));
+        }
+
         if self.match_token(&[TokenType::OpenParen]) {
             let group = ExprType::Group(Group {
                 expression: Box::new(self.expression()?),
@@ -97,6 +147,7 @@ impl Parser {
             }
             return Err(ExprError::ParserErrorMessage(String::from("Expecting ')'")));
         }
+
         Err(ExprError::ParserErrorMessage(String::from(format!(
             "Unexpected token {:?}",
             self.peek()
@@ -112,6 +163,7 @@ impl Parser {
         }
         return false;
     }
+
     fn check(&self, t: &TokenType) -> bool {
         if self.at_end() {
             return false;
@@ -128,6 +180,7 @@ impl Parser {
         }
         return false;
     }
+
     fn next_token(&self) -> Option<&Token> {
         return self.get_token();
     }

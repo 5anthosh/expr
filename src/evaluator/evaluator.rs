@@ -28,13 +28,8 @@ impl Evaluator {
             ExprType::Group(group) => self.visit_group(group),
         }
     }
-}
 
-impl<'a> Visitor<Result<Value, ExprError>> for Evaluator {
-    fn visit_binary_operation(&mut self, expr: Binary) -> Result<Value, ExprError> {
-        let left = self.accept(*expr.left)?;
-        let right = self.accept(*expr.right)?;
-        let operation = expr.operator;
+    fn check_numbers(left: Value, right: Value) -> Result<(f64, f64), ExprError> {
         let left_value = match left {
             Value::Float(left_val) => left_val,
             _ => {
@@ -51,11 +46,90 @@ impl<'a> Visitor<Result<Value, ExprError>> for Evaluator {
                 )));
             }
         };
+        return Ok((left_value, right_value));
+    }
+
+    fn check_number(value: Value) -> Result<f64, ExprError> {
+        match value {
+            Value::Float(value) => Ok(value),
+            _ => Err(ExprError::RunTimeMessage(String::from(
+                "Expecting number in unary operation",
+            ))),
+        }
+    }
+
+    fn is_trusty(obj: Value) -> bool {
+        match obj {
+            Value::Nil => false,
+            Value::Boolean(value) => value,
+            _ => true,
+        }
+    }
+}
+
+impl<'a> Visitor<Result<Value, ExprError>> for Evaluator {
+    fn visit_binary_operation(&mut self, expr: Binary) -> Result<Value, ExprError> {
+        let left = self.accept(*expr.left)?;
+        let right = self.accept(*expr.right)?;
+        let operation = expr.operator;
         match operation.tt {
-            TokenType::PLUS => Ok(Value::Float(left_value + right_value)),
-            TokenType::MINUS => Ok(Value::Float(left_value - right_value)),
-            TokenType::SLASH => Ok(Value::Float(left_value / right_value)),
-            TokenType::STAR => Ok(Value::Float(left_value * right_value)),
+            TokenType::Plus => {
+                return match left {
+                    Value::String(value) => {
+                        return match right {
+                            Value::String(value2) => Ok(Value::String(value + &value2)),
+                            Value::Float(value2) => {
+                                Ok(Value::String(format!("{}{}", value, value2)))
+                            }
+                            _ => Err(ExprError::RunTimeMessage(String::from(
+                                "Operators must be  strings or numbers for '+' ",
+                            ))),
+                        }
+                    }
+                    Value::Float(value) => match right {
+                        Value::String(value2) => {
+                            return Ok(Value::String(format!("{}{}", value, value2)))
+                        }
+                        Value::Float(value2) => Ok(Value::Float(value + value2)),
+                        _ => Err(ExprError::RunTimeMessage(String::from(
+                            "Operators must be  strings or numbers for '+' ",
+                        ))),
+                    },
+                    _ => Err(ExprError::RunTimeMessage(String::from(
+                        "Operators must be  strings or numbers for '+' ",
+                    ))),
+                }
+            }
+            TokenType::Minus => {
+                let (left_value, right_value) = Evaluator::check_numbers(left, right)?;
+                Ok(Value::Float(left_value - right_value))
+            }
+            TokenType::Slash => {
+                let (left_value, right_value) = Evaluator::check_numbers(left, right)?;
+                Ok(Value::Float(left_value / right_value))
+            }
+            TokenType::Star => {
+                let (left_value, right_value) = Evaluator::check_numbers(left, right)?;
+                Ok(Value::Float(left_value * right_value))
+            }
+            TokenType::Greater => {
+                let (left_value, right_value) = Evaluator::check_numbers(left, right)?;
+                Ok(Value::Boolean(left_value > right_value))
+            }
+            TokenType::GreaterEqual => {
+                let (left_value, right_value) = Evaluator::check_numbers(left, right)?;
+                Ok(Value::Boolean(left_value >= right_value))
+            }
+            TokenType::Lesser => {
+                let (left_value, right_value) = Evaluator::check_numbers(left, right)?;
+                Ok(Value::Boolean(left_value < right_value))
+            }
+            TokenType::LesserEqual => {
+                let (left_value, right_value) = Evaluator::check_numbers(left, right)?;
+                Ok(Value::Boolean(left_value <= right_value))
+            }
+            TokenType::EqualEqual => Ok(Value::Boolean(left.equals(&right))),
+            TokenType::BangEqual => Ok(Value::Boolean(!left.equals(&right))),
             _ => {
                 return Err(ExprError::RunTimeMessage(String::from(
                     "Unsupported binary operation",
@@ -71,17 +145,19 @@ impl<'a> Visitor<Result<Value, ExprError>> for Evaluator {
     fn visit_unary(&mut self, expr: Unary) -> Result<Value, ExprError> {
         let value = self.accept(*expr.expression)?;
 
-        let value = match value {
-            Value::Float(value) => value,
-            _ => {
-                return Err(ExprError::RunTimeMessage(String::from(
-                    "Expecting number in unary operation",
-                )));
-            }
-        };
         match expr.operator.tt {
-            TokenType::PLUS => Ok(Value::Float(value)),
-            TokenType::MINUS => Ok(Value::Float(-value)),
+            TokenType::Plus => {
+                let value = Evaluator::check_number(value)?;
+                Ok(Value::Float(value))
+            }
+            TokenType::Minus => {
+                let value = Evaluator::check_number(value)?;
+                Ok(Value::Float(-value))
+            }
+            TokenType::Bang => {
+                let value = Evaluator::is_trusty(value);
+                Ok(Value::Boolean(!value))
+            }
             _ => {
                 return Err(ExprError::RunTimeMessage(String::from(
                     "Unsupported unary operation",

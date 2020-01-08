@@ -80,13 +80,14 @@ impl Lexer {
                 self.eat();
             }
         }
-        return self.token_type(TokenType::NUMBER);
+        return self.token_type(TokenType::Number);
     }
 
     fn identifier(&mut self) -> Token {
-        if self.peek(0).is_alphanumeric() {
+        while self.peek(0).is_alphanumeric() {
             self.eat();
         }
+
         let lexeme = self.lexeme();
         match Tully::keywords_to_token_type(&lexeme[..]) {
             Some(tt) => self.token_type(tt),
@@ -114,13 +115,41 @@ impl Lexer {
     fn scan_token(&mut self) -> Result<Token, ExprError> {
         let c = self.space();
         match c {
-            '+' => Ok(self.token_type(TokenType::PLUS)),
-            '-' => Ok(self.token_type(TokenType::MINUS)),
-            '*' => Ok(self.token_type(TokenType::STAR)),
-            '/' => Ok(self.token_type(TokenType::SLASH)),
-            '%' => Ok(self.token_type(TokenType::PS)),
+            '+' => Ok(self.token_type(TokenType::Plus)),
+            '-' => Ok(self.token_type(TokenType::Minus)),
+            '*' => Ok(self.token_type(TokenType::Star)),
+            '/' => Ok(self.token_type(TokenType::Slash)),
+            '%' => Ok(self.token_type(TokenType::Percentage)),
             '(' => Ok(self.token_type(TokenType::OpenParen)),
             ')' => Ok(self.token_type(TokenType::CloseParen)),
+            '=' => {
+                if self.peek(0) == '=' {
+                    self.eat();
+                    return Ok(self.token_type(TokenType::EqualEqual));
+                }
+                Ok(self.token_type(TokenType::Equal))
+            }
+            '!' => {
+                if self.peek(0) == '=' {
+                    self.eat();
+                    return Ok(self.token_type(TokenType::BangEqual));
+                }
+                Ok(self.token_type(TokenType::Bang))
+            }
+            '>' => {
+                if self.peek(0) == '=' {
+                    self.eat();
+                    return Ok(self.token_type(TokenType::GreaterEqual));
+                }
+                Ok(self.token_type(TokenType::Greater))
+            }
+            '<' => {
+                if self.peek(0) == '=' {
+                    self.eat();
+                    return Ok(self.token_type(TokenType::LesserEqual));
+                }
+                Ok(self.token_type(TokenType::Lesser))
+            }
             '"' => self.scan_string(),
             _ => {
                 if c.is_digit(10) {
