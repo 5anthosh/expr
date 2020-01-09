@@ -3,6 +3,7 @@ mod parser;
 
 pub use expr::Assign;
 pub use expr::Binary;
+pub use expr::Block;
 pub use expr::ExprType;
 pub use expr::Expression;
 pub use expr::Group;

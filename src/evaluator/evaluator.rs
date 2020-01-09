@@ -4,8 +4,8 @@ use crate::environment::Environment;
 use crate::error::ExprError;
 use crate::lexer::token::TokenType;
 use crate::parser::{
-    Assign, Binary, ExprType, Expression, Group, Literal, Parser, Print, Unary, Var, Variable,
-    Visitor,
+    Assign, Binary, Block, ExprType, Expression, Group, Literal, Parser, Print, Unary, Var,
+    Variable, Visitor,
 };
 use crate::value::{Constants, Value};
 use std::borrow::Borrow;
@@ -64,6 +64,7 @@ impl Evaluator {
             ExprType::Variable(variable) => self.visit_variable(variable),
             ExprType::Var(var) => self.visit_var(var),
             ExprType::Assign(assign) => self.visit_assign(assign),
+            ExprType::Block(block) => self.visit_block(block),
         }
     }
 
@@ -103,9 +104,18 @@ impl Evaluator {
             _ => true,
         }
     }
+
+    fn execute_block(&mut self, statements: Vec<Box<ExprType>>) -> Result<(), ExprError> {
+        self.globals.new_env();
+        for statement in statements {
+            self.execute(*statement)?;
+        }
+        self.globals.delete_recent();
+        Ok(())
+    }
 }
 
-impl<'a> Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
+impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
     fn visit_binary_operation(&mut self, expr: Binary) -> Result<Rc<Value>, ExprError> {
         let left = self.accept(*expr.left)?;
         let right = self.accept(*expr.right)?;
@@ -246,14 +256,13 @@ impl<'a> Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
     }
 
     fn visit_assign(&mut self, expr: Assign) -> Result<Rc<Value>, ExprError> {
-        if !self.globals.contains(&expr.name) {
-            return Err(ExprError::RunTimeMessage(format!(
-                "Undefined variable {}",
-                expr.name
-            )));
-        }
         let value = self.accept(*expr.initializer)?;
-        self.globals.define(expr.name, Rc::clone(&value));
+        self.globals.assign(&expr.name, Rc::clone(&value))?;
         Ok(Rc::clone(&value))
+    }
+
+    fn visit_block(&mut self, expr: Block) -> Result<Rc<Value>, ExprError> {
+        self.execute_block(expr.statements)?;
+        Ok(Rc::clone(&self.constants.nil))
     }
 }

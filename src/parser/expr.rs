@@ -15,6 +15,7 @@ pub trait Visitor<T> {
     fn visit_variable(&mut self, expr: Variable) -> T;
     fn visit_var(&mut self, expr: Var) -> T;
     fn visit_assign(&mut self, expr: Assign) -> T;
+    fn visit_block(&mut self, expr: Block) -> T;
 }
 
 #[derive(Debug)]
@@ -35,6 +36,7 @@ pub enum ExprType<'a> {
     Variable(Variable),
     Var(Var<'a>),
     Assign(Assign<'a>),
+    Block(Block<'a>),
 }
 
 impl<'a> Expr for Binary<'a> {
@@ -130,5 +132,16 @@ pub struct Assign<'a> {
 impl<'a> Expr for Assign<'a> {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
         return visitor.visit_assign(self);
+    }
+}
+
+#[derive(Debug)]
+pub struct Block<'a> {
+    pub statements: Vec<Box<ExprType<'a>>>,
+}
+
+impl<'a> Expr for Block<'a> {
+    fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
+        return visitor.visit_block(self);
     }
 }

@@ -1,12 +1,12 @@
 use crate::error::ExprError;
 use crate::lexer::token::TokenType::{
-    Bang, BangEqual, Equal, EqualEqual, Greater, GreaterEqual, Identifier, Lesser, LesserEqual,
-    Minus, Plus, Print, SemiColon, Slash, Star,
+    Bang, BangEqual, CloseBrace, Equal, EqualEqual, Greater, GreaterEqual, Identifier, Lesser,
+    LesserEqual, Minus, Plus, Print, SemiColon, Slash, Star,
 };
 use crate::lexer::token::{Token, TokenType};
 use crate::lexer::Lexer;
 use crate::parser::expr::{Binary, ExprType, Group, Literal};
-use crate::parser::{self, Assign, Expression, Unary, Var, Variable};
+use crate::parser::{self, Assign, Block, Expression, Unary, Var, Variable};
 use crate::value::Value;
 use std::cell::Cell;
 
@@ -45,6 +45,9 @@ impl Parser {
         }
         if self.match_token(&[TokenType::Var]) {
             return self.var_statement();
+        }
+        if self.match_token(&[TokenType::OpenBrace]) {
+            return self.block();
         }
         self.expression_statement()
     }
@@ -90,6 +93,20 @@ impl Parser {
             "Expect ';' after value",
         )));
     }
+
+    fn block(&self) -> Result<ExprType, ExprError> {
+        let mut statements = Vec::new();
+        while !self.check(&CloseBrace) && !self.at_end() {
+            statements.push(Box::new(self.statement()?))
+        }
+        if self.match_token(&[CloseBrace]) {
+            return Ok(ExprType::Block(Block { statements }));
+        }
+        Err(ExprError::ParserErrorMessage(String::from(
+            "Expecting } after block",
+        )))
+    }
+
     fn expression_statement(&self) -> Result<ExprType, ExprError> {
         let expr = self.expression()?;
         if self.match_token(&[SemiColon]) {

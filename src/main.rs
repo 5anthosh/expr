@@ -1,8 +1,8 @@
-use tully::evaluator::Evaluator;
-use std::io;
-use std::io::Write;
 use std::env;
 use std::fs;
+use std::io;
+use std::io::Write;
+use tully::evaluator::Evaluator;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -44,13 +44,12 @@ fn command_line() {
     }
 }
 
-
 fn read_from_file(name: &String) {
     let contents = fs::read_to_string(name);
     match contents {
         Ok(source) => {
             Evaluator::new().eval(source);
         }
-        Err(e) => eprintln!("Unable to read from file {}", e.to_string())
+        Err(e) => eprintln!("Unable to read from file {}", e.to_string()),
     };
 }
