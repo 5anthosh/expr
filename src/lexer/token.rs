@@ -27,6 +27,10 @@ pub enum TokenType {
     SemiColon,
     OpenBrace,
     CloseBrace,
+    If,
+    Else,
+    While,
+    For,
 }
 
 #[derive(Debug)]

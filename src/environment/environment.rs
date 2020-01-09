@@ -15,9 +15,9 @@ impl Environment {
         }
     }
 
-    pub fn define(&mut self, name: String, value: Rc<Value>) {
+    pub fn define(&mut self, name: &String, value: Rc<Value>) {
         let env = &mut self.environments[0];
-        env.insert(name, value);
+        env.insert(name.clone(), value);
     }
 
     pub fn get(&self, name: &String) -> Option<Rc<Value>> {

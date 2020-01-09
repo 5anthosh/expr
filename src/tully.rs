@@ -10,6 +10,10 @@ impl Tully {
             "nil" => Some(TokenType::Nil),
             "print" => Some(TokenType::Print),
             "var" => Some(TokenType::Var),
+            "if" => Some(TokenType::If),
+            "else" => Some(TokenType::Else),
+            "while" => Some(TokenType::While),
+            "for" => Some(TokenType::For),
             _ => None,
         }
     }

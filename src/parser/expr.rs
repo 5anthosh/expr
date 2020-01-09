@@ -6,16 +6,18 @@ pub trait Expr {
 }
 
 pub trait Visitor<T> {
-    fn visit_binary_operation(&mut self, expr: Binary) -> T;
-    fn visit_literal(&mut self, expr: Literal) -> T;
-    fn visit_unary(&mut self, expr: Unary) -> T;
-    fn visit_group(&mut self, expr: Group) -> T;
-    fn visit_expression(&mut self, expr: Expression) -> T;
-    fn visit_print(&mut self, expr: Print) -> T;
-    fn visit_variable(&mut self, expr: Variable) -> T;
-    fn visit_var(&mut self, expr: Var) -> T;
-    fn visit_assign(&mut self, expr: Assign) -> T;
-    fn visit_block(&mut self, expr: Block) -> T;
+    fn visit_binary_operation(&mut self, expr: &Binary) -> T;
+    fn visit_literal(&mut self, expr: &Literal) -> T;
+    fn visit_unary(&mut self, expr: &Unary) -> T;
+    fn visit_group(&mut self, expr: &Group) -> T;
+    fn visit_expression(&mut self, expr: &Expression) -> T;
+    fn visit_print(&mut self, expr: &Print) -> T;
+    fn visit_variable(&mut self, expr: &Variable) -> T;
+    fn visit_var(&mut self, expr: &Var) -> T;
+    fn visit_assign(&mut self, expr: &Assign) -> T;
+    fn visit_block(&mut self, expr: &Block) -> T;
+    fn visit_if_statement(&mut self, expr: &IfStatement) -> T;
+    fn visit_while_statement(&mut self, expr: &WhileStatement) -> T;
 }
 
 #[derive(Debug)]
@@ -37,11 +39,13 @@ pub enum ExprType<'a> {
     Var(Var<'a>),
     Assign(Assign<'a>),
     Block(Block<'a>),
+    IfStatement(IfStatement<'a>),
+    WhileStatement(WhileStatement<'a>),
 }
 
 impl<'a> Expr for Binary<'a> {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
-        return visitor.visit_binary_operation(self);
+        return visitor.visit_binary_operation(&self);
     }
 }
 #[derive(Debug)]
@@ -51,7 +55,7 @@ pub struct Literal {
 
 impl<'a> Expr for Literal {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
-        return visitor.visit_literal(self);
+        return visitor.visit_literal(&self);
     }
 }
 
@@ -63,7 +67,7 @@ pub struct Unary<'a> {
 
 impl<'a> Expr for Unary<'a> {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
-        return visitor.visit_unary(self);
+        return visitor.visit_unary(&self);
     }
 }
 
@@ -74,7 +78,7 @@ pub struct Group<'a> {
 
 impl<'a> Expr for Group<'a> {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
-        return visitor.visit_group(self);
+        return visitor.visit_group(&self);
     }
 }
 
@@ -85,7 +89,7 @@ pub struct Expression<'a> {
 
 impl<'a> Expr for Expression<'a> {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
-        return visitor.visit_expression(self);
+        return visitor.visit_expression(&self);
     }
 }
 
@@ -96,7 +100,7 @@ pub struct Print<'a> {
 
 impl<'a> Expr for Print<'a> {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
-        return visitor.visit_print(self);
+        return visitor.visit_print(&self);
     }
 }
 
@@ -107,7 +111,7 @@ pub struct Variable {
 
 impl Expr for Variable {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
-        return visitor.visit_variable(self);
+        return visitor.visit_variable(&self);
     }
 }
 
@@ -119,7 +123,7 @@ pub struct Var<'a> {
 
 impl<'a> Expr for Var<'a> {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
-        return visitor.visit_var(self);
+        return visitor.visit_var(&self);
     }
 }
 
@@ -131,7 +135,7 @@ pub struct Assign<'a> {
 
 impl<'a> Expr for Assign<'a> {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
-        return visitor.visit_assign(self);
+        return visitor.visit_assign(&self);
     }
 }
 
@@ -142,6 +146,31 @@ pub struct Block<'a> {
 
 impl<'a> Expr for Block<'a> {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
-        return visitor.visit_block(self);
+        return visitor.visit_block(&self);
+    }
+}
+
+#[derive(Debug)]
+pub struct IfStatement<'a> {
+    pub condition: Box<ExprType<'a>>,
+    pub then_branch: Box<ExprType<'a>>,
+    pub else_branch: Option<Box<ExprType<'a>>>,
+}
+
+impl<'a> Expr for IfStatement<'a> {
+    fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
+        return visitor.visit_if_statement(&self);
+    }
+}
+
+#[derive(Debug)]
+pub struct WhileStatement<'a> {
+    pub condition: Box<ExprType<'a>>,
+    pub body: Box<ExprType<'a>>,
+}
+
+impl<'a> Expr for WhileStatement<'a> {
+    fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
+        return visitor.visit_while_statement(&self);
     }
 }

@@ -4,8 +4,8 @@ use crate::environment::Environment;
 use crate::error::ExprError;
 use crate::lexer::token::TokenType;
 use crate::parser::{
-    Assign, Binary, Block, ExprType, Expression, Group, Literal, Parser, Print, Unary, Var,
-    Variable, Visitor,
+    Assign, Binary, Block, ExprType, Expression, Group, IfStatement, Literal, Parser, Print, Unary,
+    Var, Variable, Visitor, WhileStatement,
 };
 use crate::value::{Constants, Value};
 use std::borrow::Borrow;
@@ -29,7 +29,7 @@ impl Evaluator {
         match ast {
             Ok(statements) => {
                 for statement in statements {
-                    let value = self.execute(statement);
+                    let value = self.execute(&statement);
                     let value = match value {
                         Ok(value) => value,
                         Err(e) => {
@@ -49,11 +49,11 @@ impl Evaluator {
         }
     }
 
-    fn execute(&mut self, ast: ExprType) -> Result<Rc<Value>, ExprError> {
+    fn execute(&mut self, ast: &ExprType) -> Result<Rc<Value>, ExprError> {
         self.accept(ast)
     }
 
-    fn accept(&mut self, expr: ExprType) -> Result<Rc<Value>, ExprError> {
+    fn accept(&mut self, expr: &ExprType) -> Result<Rc<Value>, ExprError> {
         match expr {
             ExprType::Binary(bin) => self.visit_binary_operation(bin),
             ExprType::Literal(lit) => self.visit_literal(lit),
@@ -65,6 +65,10 @@ impl Evaluator {
             ExprType::Var(var) => self.visit_var(var),
             ExprType::Assign(assign) => self.visit_assign(assign),
             ExprType::Block(block) => self.visit_block(block),
+            ExprType::IfStatement(if_statement) => self.visit_if_statement(if_statement),
+            ExprType::WhileStatement(while_statement) => {
+                self.visit_while_statement(while_statement)
+            }
         }
     }
 
@@ -105,10 +109,10 @@ impl Evaluator {
         }
     }
 
-    fn execute_block(&mut self, statements: Vec<Box<ExprType>>) -> Result<(), ExprError> {
+    fn execute_block(&mut self, statements: &Vec<Box<ExprType>>) -> Result<(), ExprError> {
         self.globals.new_env();
         for statement in statements {
-            self.execute(*statement)?;
+            self.execute(&*statement)?;
         }
         self.globals.delete_recent();
         Ok(())
@@ -116,9 +120,9 @@ impl Evaluator {
 }
 
 impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
-    fn visit_binary_operation(&mut self, expr: Binary) -> Result<Rc<Value>, ExprError> {
-        let left = self.accept(*expr.left)?;
-        let right = self.accept(*expr.right)?;
+    fn visit_binary_operation(&mut self, expr: &Binary) -> Result<Rc<Value>, ExprError> {
+        let left = self.accept(&*expr.left)?;
+        let right = self.accept(&*expr.right)?;
         let operation = expr.operator;
         match operation.tt {
             TokenType::Plus => match left.borrow() {
@@ -189,12 +193,12 @@ impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
         }
     }
 
-    fn visit_literal(&mut self, expr: Literal) -> Result<Rc<Value>, ExprError> {
-        return Ok(Rc::new(expr.value));
+    fn visit_literal(&mut self, expr: &Literal) -> Result<Rc<Value>, ExprError> {
+        return Ok(Rc::new(expr.value.clone()));
     }
 
-    fn visit_unary(&mut self, expr: Unary) -> Result<Rc<Value>, ExprError> {
-        let value = self.accept(*expr.expression)?;
+    fn visit_unary(&mut self, expr: &Unary) -> Result<Rc<Value>, ExprError> {
+        let value = self.accept(&*expr.expression)?;
 
         match expr.operator.tt {
             TokenType::Plus => {
@@ -217,22 +221,22 @@ impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
         }
     }
 
-    fn visit_group(&mut self, expr: Group) -> Result<Rc<Value>, ExprError> {
-        self.accept(*expr.expression)
+    fn visit_group(&mut self, expr: &Group) -> Result<Rc<Value>, ExprError> {
+        self.accept(&*expr.expression)
     }
 
-    fn visit_expression(&mut self, expr: Expression) -> Result<Rc<Value>, ExprError> {
-        let _ = self.accept(*expr.expression)?;
+    fn visit_expression(&mut self, expr: &Expression) -> Result<Rc<Value>, ExprError> {
+        let _ = self.accept(&*expr.expression)?;
         return Ok(Rc::clone(&self.constants.nil));
     }
 
-    fn visit_print(&mut self, expr: Print) -> Result<Rc<Value>, ExprError> {
-        let value = self.accept(*expr.expression)?;
+    fn visit_print(&mut self, expr: &Print) -> Result<Rc<Value>, ExprError> {
+        let value = self.accept(&*expr.expression)?;
         println!("{}", value.to_string());
         return Ok(Rc::clone(&self.constants.nil));
     }
 
-    fn visit_variable(&mut self, expr: Variable) -> Result<Rc<Value>, ExprError> {
+    fn visit_variable(&mut self, expr: &Variable) -> Result<Rc<Value>, ExprError> {
         match self.globals.get(&expr.name) {
             Some(value) => Ok(value),
             None => Err(ExprError::RunTimeMessage(format!(
@@ -242,27 +246,49 @@ impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
         }
     }
 
-    fn visit_var(&mut self, expr: Var) -> Result<Rc<Value>, ExprError> {
-        match expr.initializer {
+    fn visit_var(&mut self, expr: &Var) -> Result<Rc<Value>, ExprError> {
+        match &expr.initializer {
             Some(value) => {
-                let value = self.accept(*value)?;
-                self.globals.define(expr.name, value);
+                let value = self.accept(&*value)?;
+                self.globals.define(&expr.name, value);
             }
             None => self
                 .globals
-                .define(expr.name, Rc::clone(&self.constants.nil)),
+                .define(&expr.name, Rc::clone(&self.constants.nil)),
         }
         Ok(Rc::clone(&self.constants.nil))
     }
 
-    fn visit_assign(&mut self, expr: Assign) -> Result<Rc<Value>, ExprError> {
-        let value = self.accept(*expr.initializer)?;
+    fn visit_assign(&mut self, expr: &Assign) -> Result<Rc<Value>, ExprError> {
+        let value = self.accept(&*expr.initializer)?;
         self.globals.assign(&expr.name, Rc::clone(&value))?;
         Ok(Rc::clone(&value))
     }
 
-    fn visit_block(&mut self, expr: Block) -> Result<Rc<Value>, ExprError> {
-        self.execute_block(expr.statements)?;
+    fn visit_block(&mut self, expr: &Block) -> Result<Rc<Value>, ExprError> {
+        self.execute_block(&expr.statements)?;
+        Ok(Rc::clone(&self.constants.nil))
+    }
+
+    fn visit_if_statement(&mut self, expr: &IfStatement) -> Result<Rc<Value>, ExprError> {
+        let condition = self.accept(&*expr.condition)?;
+        if Evaluator::is_trusty(condition.borrow()) {
+            self.accept(&*expr.then_branch)?;
+            return Ok(Rc::clone(&self.constants.nil));
+        }
+        match &expr.else_branch {
+            Some(value) => {
+                self.accept(&*value)?;
+            }
+            None => (),
+        };
+        Ok(Rc::clone(&self.constants.nil))
+    }
+
+    fn visit_while_statement(&mut self, expr: &WhileStatement) -> Result<Rc<Value>, ExprError> {
+        while Evaluator::is_trusty(self.accept(&*expr.condition)?.borrow()) {
+            self.accept(&*expr.body)?;
+        }
         Ok(Rc::clone(&self.constants.nil))
     }
 }

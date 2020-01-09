@@ -1,12 +1,14 @@
 use crate::error::ExprError;
 use crate::lexer::token::TokenType::{
-    Bang, BangEqual, CloseBrace, Equal, EqualEqual, Greater, GreaterEqual, Identifier, Lesser,
-    LesserEqual, Minus, Plus, Print, SemiColon, Slash, Star,
+    Bang, BangEqual, CloseBrace, CloseParen, Else, Equal, EqualEqual, Greater, GreaterEqual,
+    Identifier, Lesser, LesserEqual, Minus, OpenParen, Plus, Print, SemiColon, Slash, Star,
 };
 use crate::lexer::token::{Token, TokenType};
 use crate::lexer::Lexer;
 use crate::parser::expr::{Binary, ExprType, Group, Literal};
-use crate::parser::{self, Assign, Block, Expression, Unary, Var, Variable};
+use crate::parser::{
+    self, Assign, Block, Expression, IfStatement, Unary, Var, Variable, WhileStatement,
+};
 use crate::value::Value;
 use std::cell::Cell;
 
@@ -48,6 +50,15 @@ impl Parser {
         }
         if self.match_token(&[TokenType::OpenBrace]) {
             return self.block();
+        }
+        if self.match_token(&[TokenType::If]) {
+            return self.if_statement();
+        }
+        if self.match_token(&[TokenType::While]) {
+            return self.while_statement();
+        }
+        if self.match_token(&[TokenType::For]) {
+            return self.for_statement();
         }
         self.expression_statement()
     }
@@ -92,6 +103,107 @@ impl Parser {
         return Err(ExprError::ParserErrorMessage(String::from(
             "Expect ';' after value",
         )));
+    }
+
+    fn if_statement(&self) -> Result<ExprType, ExprError> {
+        if self.match_token(&[OpenParen]) {
+            let condition = Box::new(self.expression()?);
+            if self.match_token(&[CloseParen]) {
+                let then_branch = Box::new(self.statement()?);
+                let mut else_branch = None;
+                if self.match_token(&[Else]) {
+                    else_branch = Some(Box::new(self.statement()?));
+                }
+                return Ok(ExprType::IfStatement(IfStatement {
+                    condition,
+                    then_branch,
+                    else_branch,
+                }));
+            }
+            return Err(ExprError::ParserErrorMessage(String::from(
+                "Expecting ')' after condition",
+            )));
+        }
+        return Err(ExprError::ParserErrorMessage(String::from(
+            "Expecting '(' after If",
+        )));
+    }
+
+    fn while_statement(&self) -> Result<ExprType, ExprError> {
+        if self.match_token(&[OpenParen]) {
+            let condition = Box::new(self.expression()?);
+            if self.match_token(&[CloseParen]) {
+                let body = Box::new(self.statement()?);
+                return Ok(ExprType::WhileStatement(WhileStatement { condition, body }));
+            }
+            return Err(ExprError::ParserErrorMessage(String::from(
+                "Expecting ')' after condition",
+            )));
+        }
+        return Err(ExprError::ParserErrorMessage(String::from(
+            "Expecting '(' after While",
+        )));
+    }
+
+    fn for_statement(&self) -> Result<ExprType, ExprError> {
+        if !self.match_token(&[OpenParen]) {
+            return Err(ExprError::ParserErrorMessage(String::from(
+                "Expecting '(' after for",
+            )));
+        }
+        let mut _initializer = None;
+        if self.match_token(&[SemiColon]) {
+            _initializer = None
+        } else if self.match_token(&[TokenType::Var]) {
+            _initializer = Some(self.var_statement()?);
+        } else {
+            _initializer = Some(self.expression_statement()?);
+        }
+        let mut condition = None;
+        if !self.check(&SemiColon) {
+            condition = Some(self.expression()?);
+        }
+        if !self.match_token(&[SemiColon]) {
+            return Err(ExprError::ParserErrorMessage(String::from(
+                "Expecting ';' after condition",
+            )));
+        }
+        let mut increment = None;
+        if !self.check(&CloseParen) {
+            increment = Some(self.expression()?);
+        }
+        if !self.match_token(&[CloseParen]) {
+            return Err(ExprError::ParserErrorMessage(String::from(
+                "Expecting ')' after clauses",
+            )));
+        }
+        let mut body = self.statement()?;
+        if let Some(increment) = increment {
+            body = ExprType::Block(Block {
+                statements: vec![
+                    Box::new(body),
+                    Box::new(ExprType::ExpressionStmt(Expression {
+                        expression: Box::new(increment),
+                    })),
+                ],
+            })
+        }
+        let condition = Box::new(match condition {
+            Some(value) => value,
+            None => ExprType::Literal(Literal {
+                value: Value::Boolean(true),
+            }),
+        });
+        body = ExprType::WhileStatement(WhileStatement {
+            condition,
+            body: Box::new(body),
+        });
+        if let Some(initializer) = _initializer {
+            body = ExprType::Block(Block {
+                statements: vec![Box::new(initializer), Box::new(body)],
+            })
+        }
+        return Ok(body);
     }
 
     fn block(&self) -> Result<ExprType, ExprError> {
