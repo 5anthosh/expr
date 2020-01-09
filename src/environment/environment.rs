@@ -4,23 +4,23 @@ use crate::value::Value;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-pub struct Environment<'a> {
-    environments: Vec<HashMap<String, Rc<Value<'a>>>>,
+pub struct Environment {
+    environments: Vec<HashMap<String, Rc<Value>>>,
 }
 
-impl<'a> Environment<'a> {
-    pub fn new() -> Environment<'a> {
+impl Environment {
+    pub fn new() -> Environment {
         Environment {
             environments: vec![HashMap::new()],
         }
     }
 
-    pub fn define(&mut self, name: &String, value: Rc<Value<'a>>) {
+    pub fn define(&mut self, name: &String, value: Rc<Value>) {
         let env = &mut self.environments[0];
         env.insert(name.clone(), value);
     }
 
-    pub fn get(&self, name: &String) -> Option<Rc<Value<'a>>> {
+    pub fn get(&self, name: &String) -> Option<Rc<Value>> {
         for env in &self.environments {
             match env.get(name) {
                 Some(v) => {
@@ -34,7 +34,7 @@ impl<'a> Environment<'a> {
         None
     }
 
-    pub fn assign(&mut self, name: &String, value: Rc<Value<'a>>) -> Result<(), ExprError> {
+    pub fn assign(&mut self, name: &String, value: Rc<Value>) -> Result<(), ExprError> {
         for env in self.environments.iter_mut() {
             if env.contains_key(name) {
                 env.insert(name.clone(), Rc::clone(&value));

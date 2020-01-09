@@ -6,6 +6,7 @@ use crate::parser::{
     Assign, Binary, Block, Call, ExprType, Expression, Function, Group, IfStatement, Literal,
     Parser, Print, Unary, Var, Variable, Visitor, WhileStatement,
 };
+use crate::value::LiteralValue;
 use crate::value::{Constants, Value};
 use std::borrow::Borrow;
 use std::rc::Rc;
@@ -132,11 +133,11 @@ impl Evaluator {
     }
 }
 
-impl<'a> Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
+impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
     fn visit_binary_operation(&mut self, expr: &Binary) -> Result<Rc<Value>, ExprError> {
         let left = self.accept(&*expr.left)?;
         let right = self.accept(&*expr.right)?;
-        let operation = expr.operator;
+        let operation = &expr.operator;
         match operation.tt {
             TokenType::Plus => match left.borrow() {
                 Value::String(value) => match right.borrow() {
@@ -208,7 +209,12 @@ impl<'a> Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
     }
 
     fn visit_literal(&mut self, expr: &Literal) -> Result<Rc<Value>, ExprError> {
-        return Ok(Rc::new(expr.value.clone()));
+        match &expr.value {
+            LiteralValue::Float(value) => Ok(Rc::new(Value::Float(value.clone()))),
+            LiteralValue::String(value) => Ok(Rc::new(Value::String(value.clone()))),
+            LiteralValue::Boolean(value) => Ok(Rc::new(Value::Boolean(value.clone()))),
+            LiteralValue::Nil => return Ok(Rc::clone(&self.constants.nil)),
+        }
     }
 
     fn visit_unary(&mut self, expr: &Unary) -> Result<Rc<Value>, ExprError> {
@@ -329,9 +335,11 @@ impl<'a> Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
         }
     }
 
-    fn visit_function<'a>(&mut self, expr: &'a Function) -> Result<Rc<Value>, ExprError> {
+    fn visit_function(&mut self, expr: &Function) -> Result<Rc<Value>, ExprError> {
         let name = &expr.name.lexeme;
-        let function = TullyCallable { declaration: expr };
+        let function = TullyCallable {
+            declaration: expr.clone(),
+        };
         self.globals
             .define(name, Rc::new(Value::Function(Rc::new(function))));
         Ok(Rc::clone(&self.constants.nil))

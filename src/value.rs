@@ -2,27 +2,35 @@ use crate::evaluator::Callable;
 use std::rc::Rc;
 
 #[derive(Clone)]
-pub enum Value<'a> {
+pub enum Value {
     Boolean(bool),
     Float(f64),
     String(String),
-    Function(Rc<dyn Callable<'a> + 'a>),
+    Function(Rc<dyn Callable>),
     Nil,
 }
 
-pub struct Constants<'a> {
-    pub nil: Rc<Value<'a>>,
+#[derive(Clone, Debug)]
+pub enum LiteralValue {
+    Boolean(bool),
+    Float(f64),
+    String(String),
+    Nil,
 }
 
-impl<'a> Constants<'a> {
-    pub fn new() -> Constants<'a> {
+pub struct Constants {
+    pub nil: Rc<Value>,
+}
+
+impl<'a> Constants {
+    pub fn new() -> Constants {
         Constants {
             nil: Rc::new(Value::Nil),
         }
     }
 }
 
-impl<'a> Value<'a> {
+impl Value {
     pub fn equals(&self, another: &Value) -> bool {
         return match self {
             Value::Nil => match another {
@@ -49,7 +57,7 @@ impl<'a> Value<'a> {
     }
 }
 
-impl<'a> ToString for Value<'a> {
+impl ToString for Value {
     fn to_string(&self) -> String {
         match self {
             Value::Nil => String::from("nil"),

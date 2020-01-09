@@ -14,6 +14,7 @@ impl Tully {
             "else" => Some(TokenType::Else),
             "while" => Some(TokenType::While),
             "for" => Some(TokenType::For),
+            "fun" => Some(TokenType::Fun),
             _ => None,
         }
     }

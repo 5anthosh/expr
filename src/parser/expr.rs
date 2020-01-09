@@ -1,5 +1,5 @@
 use crate::lexer::token::Token;
-use crate::value::Value;
+use crate::value::LiteralValue;
 
 pub trait Expr {
     fn accept<V>(self, visitor: impl Visitor<V>) -> V;
@@ -22,87 +22,94 @@ pub trait Visitor<T> {
     fn visit_function(&mut self, expr: &Function) -> T;
 }
 
-pub struct Binary<'a> {
-    pub left: Box<ExprType<'a>>,
-    pub right: Box<ExprType<'a>>,
-    pub operator: &'a Token,
+#[derive(Clone, Debug)]
+pub struct Binary {
+    pub left: Box<ExprType>,
+    pub right: Box<ExprType>,
+    pub operator: Token,
 }
 
-pub enum ExprType<'a> {
-    Binary(Binary<'a>),
+#[derive(Clone, Debug)]
+pub enum ExprType {
+    Binary(Binary),
     Literal(Literal),
-    Unary(Unary<'a>),
-    Group(Group<'a>),
-    ExpressionStmt(Expression<'a>),
-    Print(Print<'a>),
+    Unary(Unary),
+    Group(Group),
+    ExpressionStmt(Expression),
+    Print(Print),
     Variable(Variable),
-    Var(Var<'a>),
-    Assign(Assign<'a>),
-    Block(Block<'a>),
-    IfStatement(IfStatement<'a>),
-    WhileStatement(WhileStatement<'a>),
-    Call(Call<'a>),
-    Function(Function<'a>),
+    Var(Var),
+    Assign(Assign),
+    Block(Block),
+    IfStatement(IfStatement),
+    WhileStatement(WhileStatement),
+    Call(Call),
+    Function(Function),
 }
 
-impl<'a> Expr for Binary<'a> {
+impl Expr for Binary {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
         return visitor.visit_binary_operation(&self);
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Literal {
-    pub value: Value,
+    pub value: LiteralValue,
 }
 
-impl<'a> Expr for Literal {
+impl Expr for Literal {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
         return visitor.visit_literal(&self);
     }
 }
 
-pub struct Unary<'a> {
-    pub expression: Box<ExprType<'a>>,
-    pub operator: &'a Token,
+#[derive(Clone, Debug)]
+pub struct Unary {
+    pub expression: Box<ExprType>,
+    pub operator: Token,
 }
 
-impl<'a> Expr for Unary<'a> {
+impl Expr for Unary {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
         return visitor.visit_unary(&self);
     }
 }
 
-pub struct Group<'a> {
-    pub expression: Box<ExprType<'a>>,
+#[derive(Clone, Debug)]
+pub struct Group {
+    pub expression: Box<ExprType>,
 }
 
-impl<'a> Expr for Group<'a> {
+impl Expr for Group {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
         return visitor.visit_group(&self);
     }
 }
 
-pub struct Expression<'a> {
-    pub expression: Box<ExprType<'a>>,
+#[derive(Clone, Debug)]
+pub struct Expression {
+    pub expression: Box<ExprType>,
 }
 
-impl<'a> Expr for Expression<'a> {
+impl Expr for Expression {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
         return visitor.visit_expression(&self);
     }
 }
 
-pub struct Print<'a> {
-    pub expression: Box<ExprType<'a>>,
+#[derive(Clone, Debug)]
+pub struct Print {
+    pub expression: Box<ExprType>,
 }
 
-impl<'a> Expr for Print<'a> {
+impl Expr for Print {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
         return visitor.visit_print(&self);
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Variable {
     pub name: String,
 }
@@ -113,79 +120,86 @@ impl Expr for Variable {
     }
 }
 
-pub struct Var<'a> {
+#[derive(Clone, Debug)]
+pub struct Var {
     pub name: String,
-    pub initializer: Option<Box<ExprType<'a>>>,
+    pub initializer: Option<Box<ExprType>>,
 }
 
-impl<'a> Expr for Var<'a> {
+impl Expr for Var {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
         return visitor.visit_var(&self);
     }
 }
 
-pub struct Assign<'a> {
+#[derive(Clone, Debug)]
+pub struct Assign {
     pub name: String,
-    pub initializer: Box<ExprType<'a>>,
+    pub initializer: Box<ExprType>,
 }
 
-impl<'a> Expr for Assign<'a> {
+impl Expr for Assign {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
         return visitor.visit_assign(&self);
     }
 }
 
-pub struct Block<'a> {
-    pub statements: Vec<Box<ExprType<'a>>>,
+#[derive(Clone, Debug)]
+pub struct Block {
+    pub statements: Vec<Box<ExprType>>,
 }
 
-impl<'a> Expr for Block<'a> {
+impl Expr for Block {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
         return visitor.visit_block(&self);
     }
 }
 
-pub struct IfStatement<'a> {
-    pub condition: Box<ExprType<'a>>,
-    pub then_branch: Box<ExprType<'a>>,
-    pub else_branch: Option<Box<ExprType<'a>>>,
+#[derive(Clone, Debug)]
+pub struct IfStatement {
+    pub condition: Box<ExprType>,
+    pub then_branch: Box<ExprType>,
+    pub else_branch: Option<Box<ExprType>>,
 }
 
-impl<'a> Expr for IfStatement<'a> {
+impl Expr for IfStatement {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
         return visitor.visit_if_statement(&self);
     }
 }
 
-pub struct WhileStatement<'a> {
-    pub condition: Box<ExprType<'a>>,
-    pub body: Box<ExprType<'a>>,
+#[derive(Clone, Debug)]
+pub struct WhileStatement {
+    pub condition: Box<ExprType>,
+    pub body: Box<ExprType>,
 }
 
-impl<'a> Expr for WhileStatement<'a> {
+impl Expr for WhileStatement {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
         return visitor.visit_while_statement(&self);
     }
 }
 
-pub struct Call<'a> {
-    pub callee: Box<ExprType<'a>>,
-    pub arguments: Vec<Box<ExprType<'a>>>,
+#[derive(Clone, Debug)]
+pub struct Call {
+    pub callee: Box<ExprType>,
+    pub arguments: Vec<Box<ExprType>>,
 }
 
-impl<'a> Expr for Call<'a> {
+impl Expr for Call {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
         return visitor.visit_call(&self);
     }
 }
 
-pub struct Function<'a> {
-    pub name: &'a Token,
-    pub params: Vec<&'a Token>,
-    pub body: Block<'a>,
+#[derive(Clone, Debug)]
+pub struct Function {
+    pub name: Token,
+    pub params: Vec<Token>,
+    pub body: Block,
 }
 
-impl<'a> Expr for Function<'a> {
+impl Expr for Function {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
         return visitor.visit_function(&self);
     }

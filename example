@@ -20,16 +20,19 @@ if (423423) {
   print false;
 }
 
-var a = 0;
-var b = 1;
 
-var start = clock();
+
+
+fun printHello(a, b) {
 while (a < 100000000000000000000000000000000) {
   print a;
   var temp = a;
   a = b;
   b = temp + b;
 }
+}
 
+var start = clock();
+printHello(0, 1);
 print clock() - start + " sec";
 print clock;

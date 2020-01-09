@@ -14,11 +14,11 @@ pub trait Callable {
     fn to_string(&self) -> String;
 }
 
-pub struct TullyCallable<'a> {
-    declaration: &'a Function<'a>,
+pub struct TullyCallable {
+    pub declaration: Function,
 }
 
-impl<'a> Callable for TullyCallable<'a> {
+impl Callable for TullyCallable {
     fn arity(&self) -> usize {
         self.declaration.params.len()
     }
@@ -33,8 +33,8 @@ impl<'a> Callable for TullyCallable<'a> {
             evaluator
                 .globals
                 .define(&param.lexeme, Rc::clone(&arguments[i]));
-            evaluator.execute_block(&self.declaration.body.statements, false)?;
         }
+        evaluator.execute_block(&self.declaration.body.statements, false)?;
         evaluator.globals.delete_recent();
         return Ok(Rc::clone(&evaluator.constants.nil));
     }

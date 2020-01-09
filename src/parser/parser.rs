@@ -10,7 +10,7 @@ use crate::parser::expr::{Binary, Call, ExprType, Function, Group, Literal};
 use crate::parser::{
     self, Assign, Block, Expression, IfStatement, Unary, Var, Variable, WhileStatement,
 };
-use crate::value::Value;
+use crate::value::LiteralValue;
 use std::cell::Cell;
 
 pub struct Parser {
@@ -196,7 +196,7 @@ impl Parser {
         let condition = Box::new(match condition {
             Some(value) => value,
             None => ExprType::Literal(Literal {
-                value: Value::Boolean(true),
+                value: LiteralValue::Boolean(true),
             }),
         });
         body = ExprType::WhileStatement(WhileStatement {
@@ -218,7 +218,7 @@ impl Parser {
                 kind
             ))));
         }
-        let name = self.previous();
+        let name = self.previous().clone();
         if !self.match_token(&[OpenParen]) {
             return Err(ExprError::ParserErrorMessage(String::from(format!(
                 "Expect '(' after {} name",
@@ -238,7 +238,7 @@ impl Parser {
                         "Expect parameter name",
                     )));
                 }
-                params.push(self.previous());
+                params.push(self.previous().clone());
                 if self.match_token(&[COMMA]) {
                     continue;
                 }
@@ -320,7 +320,7 @@ impl Parser {
     fn equality(&self) -> Result<ExprType, ExprError> {
         let mut expr = self.comparator()?;
         while self.match_token(&[EqualEqual, BangEqual]) {
-            let operator = self.previous();
+            let operator = self.previous().clone();
             let right = self.comparator()?;
             expr = ExprType::Binary(Binary {
                 left: Box::new(expr),
@@ -334,7 +334,7 @@ impl Parser {
     fn comparator(&self) -> Result<ExprType, ExprError> {
         let mut expr = self.addition()?;
         while self.match_token(&[Greater, GreaterEqual, Lesser, LesserEqual]) {
-            let operator = self.previous();
+            let operator = self.previous().clone();
             let right = self.addition()?;
             expr = ExprType::Binary(Binary {
                 left: Box::new(expr),
@@ -348,7 +348,7 @@ impl Parser {
     fn addition(&self) -> Result<ExprType, ExprError> {
         let mut expr = self.multiply()?;
         while self.match_token(&[Plus, Minus]) {
-            let operator = self.previous();
+            let operator = self.previous().clone();
             let right = self.multiply()?;
             expr = ExprType::Binary(Binary {
                 left: Box::new(expr),
@@ -362,7 +362,7 @@ impl Parser {
     fn multiply(&self) -> Result<ExprType, ExprError> {
         let mut expr = self.unary()?;
         while self.match_token(&[Star, Slash]) {
-            let operator = self.previous();
+            let operator = self.previous().clone();
             let right = self.unary()?;
             expr = ExprType::Binary(Binary {
                 left: Box::new(expr),
@@ -375,7 +375,7 @@ impl Parser {
 
     fn unary(&self) -> Result<ExprType, ExprError> {
         while self.match_token(&[Plus, Minus, Bang]) {
-            let operator = self.previous();
+            let operator = self.previous().clone();
             let expression = self.unary()?;
             return Ok(ExprType::Unary(Unary {
                 expression: Box::new(expression),
@@ -425,7 +425,7 @@ impl Parser {
             let t = self.previous();
             let number: f64 = t.lexeme.parse().unwrap();
             return Ok(ExprType::Literal(Literal {
-                value: Value::Float(number),
+                value: LiteralValue::Float(number),
             }));
         }
 
@@ -433,24 +433,26 @@ impl Parser {
             let t = self.previous();
             let string_value = &t.lexeme[1..t.lexeme.len() - 1];
             return Ok(ExprType::Literal(Literal {
-                value: Value::String(String::from(string_value)),
+                value: LiteralValue::String(String::from(string_value)),
             }));
         }
 
         if self.match_token(&[TokenType::True]) {
             return Ok(ExprType::Literal(Literal {
-                value: Value::Boolean(true),
+                value: LiteralValue::Boolean(true),
             }));
         }
 
         if self.match_token(&[TokenType::False]) {
             return Ok(ExprType::Literal(Literal {
-                value: Value::Boolean(false),
+                value: LiteralValue::Boolean(false),
             }));
         }
 
         if self.match_token(&[TokenType::Nil]) {
-            return Ok(ExprType::Literal(Literal { value: Value::Nil }));
+            return Ok(ExprType::Literal(Literal {
+                value: LiteralValue::Nil,
+            }));
         }
 
         if self.match_token(&[TokenType::Identifier]) {
