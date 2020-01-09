@@ -5,16 +5,16 @@ use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub struct Clock;
-impl<'a> Callable<'a> for Clock {
+impl Callable for Clock {
     fn arity(&self) -> usize {
         return 0;
     }
 
     fn call(
         &self,
-        _evaluator: &'a mut Evaluator<'a>,
-        _arguments: Vec<Rc<Value<'a>>>,
-    ) -> Result<Rc<Value<'a>>, ExprError> {
+        _evaluator: &mut Evaluator,
+        _arguments: Vec<Rc<Value>>,
+    ) -> Result<Rc<Value>, ExprError> {
         let start = SystemTime::now();
         let since_the_epoch = start.duration_since(UNIX_EPOCH);
         let since_the_epoch = match since_the_epoch {
