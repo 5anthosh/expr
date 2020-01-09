@@ -49,7 +49,7 @@ impl Lexer {
     }
 
     fn token_type(&mut self, tt: TokenType) -> Token {
-        let token: Token = Token::new(tt, self.lexeme(), self.start, self.current);
+        let token: Token = Token::new(tt, self.lexeme(), self.line,  self.start, self.current);
         self.start = self.current;
         return token;
     }
@@ -57,6 +57,9 @@ impl Lexer {
     fn space(&mut self) -> char {
         let mut c = self.eat();
         while c.is_whitespace() {
+            if c == '\n' {
+                self.line += 1;
+            }
             self.start = self.current;
             c = self.eat();
         }

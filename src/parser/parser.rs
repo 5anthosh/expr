@@ -101,7 +101,7 @@ impl Parser {
             }));
         }
         return Err(ExprError::ParserErrorMessage(String::from(
-            "Expect ';' after value",
+            format!("Expect ';' after value {:?}", self.peek())
         )));
     }
 
@@ -255,59 +255,59 @@ impl Parser {
     }
 
     fn equality(&self) -> Result<ExprType, ExprError> {
-        let left = self.comparator()?;
+        let mut expr = self.comparator()?;
         while self.match_token(&[EqualEqual, BangEqual]) {
             let operator = self.previous();
             let right = self.comparator()?;
-            return Ok(ExprType::Binary(Binary {
-                left: Box::new(left),
+            expr = ExprType::Binary(Binary {
+                left: Box::new(expr),
                 right: Box::new(right),
                 operator,
-            }));
+            });
         }
-        return Ok(left);
+        return Ok(expr);
     }
 
     fn comparator(&self) -> Result<ExprType, ExprError> {
-        let left = self.addition()?;
+        let mut expr = self.addition()?;
         while self.match_token(&[Greater, GreaterEqual, Lesser, LesserEqual]) {
             let operator = self.previous();
             let right = self.addition()?;
-            return Ok(ExprType::Binary(Binary {
-                left: Box::new(left),
+            expr = ExprType::Binary(Binary {
+                left: Box::new(expr),
                 right: Box::new(right),
                 operator,
-            }));
+            });
         }
-        return Ok(left);
+        return Ok(expr);
     }
 
     fn addition(&self) -> Result<ExprType, ExprError> {
-        let left = self.multiply()?;
+        let mut expr = self.multiply()?;
         while self.match_token(&[Plus, Minus]) {
             let operator = self.previous();
             let right = self.multiply()?;
-            return Ok(ExprType::Binary(Binary {
-                left: Box::new(left),
+            expr = ExprType::Binary(Binary {
+                left: Box::new(expr),
                 right: Box::new(right),
                 operator,
-            }));
+            });
         }
-        return Ok(left);
+        return Ok(expr);
     }
 
     fn multiply(&self) -> Result<ExprType, ExprError> {
-        let left = self.unary()?;
+        let mut expr = self.unary()?;
         while self.match_token(&[Star, Slash]) {
             let operator = self.previous();
             let right = self.unary()?;
-            return Ok(ExprType::Binary(Binary {
-                left: Box::new(left),
+            expr = ExprType::Binary(Binary {
+                left: Box::new(expr),
                 right: Box::new(right),
                 operator,
-            }));
+            });
         }
-        return Ok(left);
+        return Ok(expr);
     }
 
     fn unary(&self) -> Result<ExprType, ExprError> {

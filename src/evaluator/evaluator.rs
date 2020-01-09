@@ -189,6 +189,7 @@ impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
             TokenType::EqualEqual => Ok(Rc::new(Value::Boolean(left.equals(&right)))),
             TokenType::BangEqual => Ok(Rc::new(Value::Boolean(!left.equals(&right)))),
             _ => {
+                // Not reachable
                 return Err(ExprError::RunTimeMessage(String::from(
                     "Unsupported binary operation",
                 )));
@@ -217,6 +218,7 @@ impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
                 Ok(Rc::new(Value::Boolean(!value)))
             }
             _ => {
+                // Not reachable
                 return Err(ExprError::RunTimeMessage(String::from(
                     "Unsupported unary operation",
                 )));

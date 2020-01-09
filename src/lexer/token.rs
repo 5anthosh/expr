@@ -38,6 +38,7 @@ pub enum TokenType {
 pub struct Token {
     pub tt: TokenType,
     pub lexeme: String,
+    pub line: usize,
     start: usize,
     end: usize,
 }
@@ -47,14 +48,16 @@ impl Token {
         return Token {
             tt: TokenType::EOL,
             lexeme: String::default(),
+            line: 0,
             start: 0,
             end: 0,
         };
     }
-    pub fn new(tt: TokenType, lexeme: String, start: usize, end: usize) -> Token {
+    pub fn new(tt: TokenType, lexeme: String, line: usize,  start: usize, end: usize) -> Token {
         Token {
             tt,
             lexeme,
+            line,
             start,
             end,
         }
