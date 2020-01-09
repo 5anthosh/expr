@@ -1,11 +1,12 @@
 use crate::error::ExprError;
 use crate::lexer::token::TokenType::{
     Bang, BangEqual, CloseBrace, CloseParen, Else, Equal, EqualEqual, Greater, GreaterEqual,
-    Identifier, Lesser, LesserEqual, Minus, OpenParen, Plus, Print, SemiColon, Slash, Star, COMMA,
+    Identifier, Lesser, LesserEqual, Minus, OpenBrace, OpenParen, Plus, Print, SemiColon, Slash,
+    Star, COMMA,
 };
 use crate::lexer::token::{Token, TokenType};
 use crate::lexer::Lexer;
-use crate::parser::expr::{Binary, Call, ExprType, Group, Literal};
+use crate::parser::expr::{Binary, Call, ExprType, Function, Group, Literal};
 use crate::parser::{
     self, Assign, Block, Expression, IfStatement, Unary, Var, Variable, WhileStatement,
 };
@@ -47,6 +48,9 @@ impl Parser {
         }
         if self.match_token(&[TokenType::Var]) {
             return self.var_statement();
+        }
+        if self.match_token(&[TokenType::Fun]) {
+            return self.function(String::from("function"));
         }
         if self.match_token(&[TokenType::OpenBrace]) {
             return self.block();
@@ -100,9 +104,10 @@ impl Parser {
                 expression: Box::new(expr),
             }));
         }
-        return Err(ExprError::ParserErrorMessage(String::from(
-            format!("Expect ';' after value {:?}", self.peek())
-        )));
+        return Err(ExprError::ParserErrorMessage(String::from(format!(
+            "Expect ';' after value {:?}",
+            self.peek()
+        ))));
     }
 
     fn if_statement(&self) -> Result<ExprType, ExprError> {
@@ -204,6 +209,64 @@ impl Parser {
             })
         }
         return Ok(body);
+    }
+
+    fn function(&self, kind: String) -> Result<ExprType, ExprError> {
+        if !self.match_token(&[Identifier]) {
+            return Err(ExprError::ParserErrorMessage(String::from(format!(
+                "Expect {} name",
+                kind
+            ))));
+        }
+        let name = self.previous();
+        if !self.match_token(&[OpenParen]) {
+            return Err(ExprError::ParserErrorMessage(String::from(format!(
+                "Expect '(' after {} name",
+                kind
+            ))));
+        }
+        let mut params = Vec::new();
+        if !self.check(&CloseParen) {
+            loop {
+                if params.len() >= 255 {
+                    return Err(ExprError::ParserErrorMessage(String::from(
+                        "Cannot have more than 255 params",
+                    )));
+                }
+                if !self.match_token(&[Identifier]) {
+                    return Err(ExprError::ParserErrorMessage(String::from(
+                        "Expect parameter name",
+                    )));
+                }
+                params.push(self.previous());
+                if self.match_token(&[COMMA]) {
+                    continue;
+                }
+                break;
+            }
+        }
+        if !self.match_token(&[CloseParen]) {
+            return Err(ExprError::ParserErrorMessage(String::from(
+                "Expect ')' after parameters",
+            )));
+        }
+        if !self.match_token(&[OpenBrace]) {
+            return Err(ExprError::ParserErrorMessage(String::from(format!(
+                "Expect '{{' before {} body",
+                kind
+            ))));
+        }
+        let body = Box::new(self.block()?);
+        match *body {
+            ExprType::Block(value) => Ok(ExprType::Function(Function {
+                name,
+                params,
+                body: value,
+            })),
+            _ => Err(ExprError::ParserErrorMessage(String::from(
+                "Expecting block",
+            ))),
+        }
     }
 
     fn block(&self) -> Result<ExprType, ExprError> {

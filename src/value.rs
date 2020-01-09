@@ -56,7 +56,7 @@ impl ToString for Value {
             Value::Float(value) => format!("{}", value),
             Value::Boolean(value) => format!("{}", value),
             Value::String(value) => value.to_string(),
-            Value::Function(_) => String::from("Function"),
+            Value::Function(func) => func.to_string(),
         }
     }
 }

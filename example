@@ -32,3 +32,4 @@ while (a < 100000000000000000000000000000000) {
 }
 
 print clock() - start + " sec";
+print clock;

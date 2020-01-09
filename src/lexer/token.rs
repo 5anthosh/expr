@@ -32,6 +32,7 @@ pub enum TokenType {
     While,
     For,
     COMMA,
+    Fun,
 }
 
 #[derive(Debug)]
@@ -53,7 +54,7 @@ impl Token {
             end: 0,
         };
     }
-    pub fn new(tt: TokenType, lexeme: String, line: usize,  start: usize, end: usize) -> Token {
+    pub fn new(tt: TokenType, lexeme: String, line: usize, start: usize, end: usize) -> Token {
         Token {
             tt,
             lexeme,

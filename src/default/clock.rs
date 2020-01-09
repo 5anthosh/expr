@@ -12,7 +12,7 @@ impl Callable for Clock {
 
     fn call(
         &self,
-        _evaluator: &Evaluator,
+        _evaluator: &mut Evaluator,
         _arguments: Vec<Rc<Value>>,
     ) -> Result<Rc<Value>, ExprError> {
         let start = SystemTime::now();
@@ -27,5 +27,9 @@ impl Callable for Clock {
             }
         };
         Ok(Rc::new(Value::Float(since_the_epoch.as_secs_f64())))
+    }
+
+    fn to_string(&self) -> String {
+        String::from("<native fn clock>")
     }
 }

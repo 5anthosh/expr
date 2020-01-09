@@ -19,6 +19,7 @@ pub trait Visitor<T> {
     fn visit_if_statement(&mut self, expr: &IfStatement) -> T;
     fn visit_while_statement(&mut self, expr: &WhileStatement) -> T;
     fn visit_call(&mut self, expr: &Call) -> T;
+    fn visit_function(&mut self, expr: &Function) -> T;
 }
 
 pub struct Binary<'a> {
@@ -41,6 +42,7 @@ pub enum ExprType<'a> {
     IfStatement(IfStatement<'a>),
     WhileStatement(WhileStatement<'a>),
     Call(Call<'a>),
+    Function(Function<'a>),
 }
 
 impl<'a> Expr for Binary<'a> {
@@ -174,5 +176,17 @@ pub struct Call<'a> {
 impl<'a> Expr for Call<'a> {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
         return visitor.visit_call(&self);
+    }
+}
+
+pub struct Function<'a> {
+    pub name: &'a Token,
+    pub params: Vec<&'a Token>,
+    pub body: Block<'a>,
+}
+
+impl<'a> Expr for Function<'a> {
+    fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
+        return visitor.visit_function(&self);
     }
 }

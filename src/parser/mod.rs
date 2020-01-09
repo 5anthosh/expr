@@ -7,6 +7,7 @@ pub use expr::Block;
 pub use expr::Call;
 pub use expr::ExprType;
 pub use expr::Expression;
+pub use expr::Function;
 pub use expr::Group;
 pub use expr::IfStatement;
 pub use expr::Literal;

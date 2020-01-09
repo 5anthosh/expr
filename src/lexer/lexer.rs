@@ -49,7 +49,7 @@ impl Lexer {
     }
 
     fn token_type(&mut self, tt: TokenType) -> Token {
-        let token: Token = Token::new(tt, self.lexeme(), self.line,  self.start, self.current);
+        let token: Token = Token::new(tt, self.lexeme(), self.line, self.start, self.current);
         self.start = self.current;
         return token;
     }

@@ -1,9 +1,10 @@
 use crate::environment::Environment;
 use crate::error::ExprError;
+use crate::evaluator::callable::TullyCallable;
 use crate::lexer::token::TokenType;
 use crate::parser::{
-    Assign, Binary, Block, Call, ExprType, Expression, Group, IfStatement, Literal, Parser, Print,
-    Unary, Var, Variable, Visitor, WhileStatement,
+    Assign, Binary, Block, Call, ExprType, Expression, Function, Group, IfStatement, Literal,
+    Parser, Print, Unary, Var, Variable, Visitor, WhileStatement,
 };
 use crate::value::{Constants, Value};
 use std::borrow::Borrow;
@@ -11,7 +12,7 @@ use std::rc::Rc;
 
 pub struct Evaluator {
     pub constants: Constants,
-    globals: Environment,
+    pub globals: Environment,
 }
 
 impl Evaluator {
@@ -55,7 +56,7 @@ impl Evaluator {
         self.accept(ast)
     }
 
-    fn accept(&mut self, expr: &ExprType) -> Result<Rc<Value>, ExprError> {
+    pub fn accept(&mut self, expr: &ExprType) -> Result<Rc<Value>, ExprError> {
         match expr {
             ExprType::Binary(bin) => self.visit_binary_operation(bin),
             ExprType::Literal(lit) => self.visit_literal(lit),
@@ -72,6 +73,7 @@ impl Evaluator {
                 self.visit_while_statement(while_statement)
             }
             ExprType::Call(call) => self.visit_call(call),
+            ExprType::Function(function) => self.visit_function(function),
         }
     }
 
@@ -112,17 +114,25 @@ impl Evaluator {
         }
     }
 
-    fn execute_block(&mut self, statements: &Vec<Box<ExprType>>) -> Result<(), ExprError> {
-        self.globals.new_env();
+    pub fn execute_block(
+        &mut self,
+        statements: &Vec<Box<ExprType>>,
+        new_block: bool,
+    ) -> Result<(), ExprError> {
+        if new_block {
+            self.globals.new_env();
+        }
         for statement in statements {
             self.execute(&*statement)?;
         }
-        self.globals.delete_recent();
+        if new_block {
+            self.globals.delete_recent();
+        }
         Ok(())
     }
 }
 
-impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
+impl<'a> Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
     fn visit_binary_operation(&mut self, expr: &Binary) -> Result<Rc<Value>, ExprError> {
         let left = self.accept(&*expr.left)?;
         let right = self.accept(&*expr.right)?;
@@ -271,7 +281,7 @@ impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
     }
 
     fn visit_block(&mut self, expr: &Block) -> Result<Rc<Value>, ExprError> {
-        self.execute_block(&expr.statements)?;
+        self.execute_block(&expr.statements, true)?;
         Ok(Rc::clone(&self.constants.nil))
     }
 
@@ -317,5 +327,13 @@ impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
             }
             _ => Err(ExprError::RunTimeMessage(String::from(" Not a callable"))),
         }
+    }
+
+    fn visit_function<'a>(&mut self, expr: &'a Function) -> Result<Rc<Value>, ExprError> {
+        let name = &expr.name.lexeme;
+        let function = TullyCallable { declaration: expr };
+        self.globals
+            .define(name, Rc::new(Value::Function(Rc::new(function))));
+        Ok(Rc::clone(&self.constants.nil))
     }
 }
