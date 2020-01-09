@@ -1,11 +1,11 @@
 use crate::error::ExprError;
 use crate::lexer::token::TokenType::{
     Bang, BangEqual, CloseBrace, CloseParen, Else, Equal, EqualEqual, Greater, GreaterEqual,
-    Identifier, Lesser, LesserEqual, Minus, OpenParen, Plus, Print, SemiColon, Slash, Star,
+    Identifier, Lesser, LesserEqual, Minus, OpenParen, Plus, Print, SemiColon, Slash, Star, COMMA,
 };
 use crate::lexer::token::{Token, TokenType};
 use crate::lexer::Lexer;
-use crate::parser::expr::{Binary, ExprType, Group, Literal};
+use crate::parser::expr::{Binary, Call, ExprType, Group, Literal};
 use crate::parser::{
     self, Assign, Block, Expression, IfStatement, Unary, Var, Variable, WhileStatement,
 };
@@ -319,7 +319,42 @@ impl Parser {
                 operator,
             }));
         }
-        self.term()
+        self.call()
+    }
+
+    fn call(&self) -> Result<ExprType, ExprError> {
+        let mut expr = self.term()?;
+        loop {
+            if self.match_token(&[OpenParen]) {
+                let mut arguments = Vec::new();
+                if !self.check(&CloseParen) {
+                    loop {
+                        if arguments.len() >= 255 {
+                            return Err(ExprError::ParserErrorMessage(String::from(
+                                "Can not have more than 255 arguments",
+                            )));
+                        }
+                        arguments.push(Box::new(self.expression()?));
+                        if self.match_token(&[COMMA]) {
+                            continue;
+                        }
+                        break;
+                    }
+                }
+                if !self.match_token(&[CloseParen]) {
+                    return Err(ExprError::ParserErrorMessage(String::from(
+                        "Expecting ')' after arguments",
+                    )));
+                }
+                expr = ExprType::Call(Call {
+                    callee: Box::new(expr),
+                    arguments,
+                })
+            } else {
+                break;
+            }
+        }
+        return Ok(expr);
     }
 
     fn term(&self) -> Result<ExprType, ExprError> {

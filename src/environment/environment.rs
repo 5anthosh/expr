@@ -1,9 +1,9 @@
+use crate::default::Clock;
 use crate::error::ExprError;
 use crate::value::Value;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-#[derive(Debug)]
 pub struct Environment {
     environments: Vec<HashMap<String, Rc<Value>>>,
 }
@@ -55,5 +55,12 @@ impl Environment {
         if self.environments.len() > 1 {
             self.environments.remove(0);
         }
+    }
+
+    pub fn set_default_functions(&mut self) {
+        self.define(
+            &String::from("clock"),
+            Rc::new(Value::Function(Rc::new(Clock))),
+        )
     }
 }

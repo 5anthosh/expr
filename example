@@ -2,18 +2,22 @@ var asdf = 234234;
 asdf = asdf + 1;
 print asdf;
 {
-var hello = "santhosh";
-print asdf;
-var asdf = 1234;
-print asdf;
-print hello;
+  var hello = "santhosh";
+  print asdf;
+  var asdf = 1234;
+  {
+    print asdf;
+    asdf = 1222; 
+  }
+  print asdf;
+  print hello;
 }
 print asdf;
 
 if (423423) {
-print true;
+  print true;
 } else {
-print false;
+  print false;
 }
 
 var a = 0;
@@ -26,6 +30,4 @@ while (a < 100000000000000000000000000000000) {
   b = temp + b;
 }
 
-for(var b = 5; b < 1000000000000000000000000006; b = b + 1){
-  print b;
-}
+print clock();

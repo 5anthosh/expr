@@ -18,16 +18,15 @@ pub trait Visitor<T> {
     fn visit_block(&mut self, expr: &Block) -> T;
     fn visit_if_statement(&mut self, expr: &IfStatement) -> T;
     fn visit_while_statement(&mut self, expr: &WhileStatement) -> T;
+    fn visit_call(&mut self, expr: &Call) -> T;
 }
 
-#[derive(Debug)]
 pub struct Binary<'a> {
     pub left: Box<ExprType<'a>>,
     pub right: Box<ExprType<'a>>,
     pub operator: &'a Token,
 }
 
-#[derive(Debug)]
 pub enum ExprType<'a> {
     Binary(Binary<'a>),
     Literal(Literal),
@@ -41,6 +40,7 @@ pub enum ExprType<'a> {
     Block(Block<'a>),
     IfStatement(IfStatement<'a>),
     WhileStatement(WhileStatement<'a>),
+    Call(Call<'a>),
 }
 
 impl<'a> Expr for Binary<'a> {
@@ -48,7 +48,7 @@ impl<'a> Expr for Binary<'a> {
         return visitor.visit_binary_operation(&self);
     }
 }
-#[derive(Debug)]
+
 pub struct Literal {
     pub value: Value,
 }
@@ -59,7 +59,6 @@ impl<'a> Expr for Literal {
     }
 }
 
-#[derive(Debug)]
 pub struct Unary<'a> {
     pub expression: Box<ExprType<'a>>,
     pub operator: &'a Token,
@@ -71,7 +70,6 @@ impl<'a> Expr for Unary<'a> {
     }
 }
 
-#[derive(Debug)]
 pub struct Group<'a> {
     pub expression: Box<ExprType<'a>>,
 }
@@ -82,7 +80,6 @@ impl<'a> Expr for Group<'a> {
     }
 }
 
-#[derive(Debug)]
 pub struct Expression<'a> {
     pub expression: Box<ExprType<'a>>,
 }
@@ -93,7 +90,6 @@ impl<'a> Expr for Expression<'a> {
     }
 }
 
-#[derive(Debug)]
 pub struct Print<'a> {
     pub expression: Box<ExprType<'a>>,
 }
@@ -115,7 +111,6 @@ impl Expr for Variable {
     }
 }
 
-#[derive(Debug)]
 pub struct Var<'a> {
     pub name: String,
     pub initializer: Option<Box<ExprType<'a>>>,
@@ -127,7 +122,6 @@ impl<'a> Expr for Var<'a> {
     }
 }
 
-#[derive(Debug)]
 pub struct Assign<'a> {
     pub name: String,
     pub initializer: Box<ExprType<'a>>,
@@ -139,7 +133,6 @@ impl<'a> Expr for Assign<'a> {
     }
 }
 
-#[derive(Debug)]
 pub struct Block<'a> {
     pub statements: Vec<Box<ExprType<'a>>>,
 }
@@ -150,7 +143,6 @@ impl<'a> Expr for Block<'a> {
     }
 }
 
-#[derive(Debug)]
 pub struct IfStatement<'a> {
     pub condition: Box<ExprType<'a>>,
     pub then_branch: Box<ExprType<'a>>,
@@ -163,7 +155,6 @@ impl<'a> Expr for IfStatement<'a> {
     }
 }
 
-#[derive(Debug)]
 pub struct WhileStatement<'a> {
     pub condition: Box<ExprType<'a>>,
     pub body: Box<ExprType<'a>>,
@@ -172,5 +163,16 @@ pub struct WhileStatement<'a> {
 impl<'a> Expr for WhileStatement<'a> {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
         return visitor.visit_while_statement(&self);
+    }
+}
+
+pub struct Call<'a> {
+    pub callee: Box<ExprType<'a>>,
+    pub arguments: Vec<Box<ExprType<'a>>>,
+}
+
+impl<'a> Expr for Call<'a> {
+    fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
+        return visitor.visit_call(&self);
     }
 }

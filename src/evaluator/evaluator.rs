@@ -1,25 +1,26 @@
-use std::rc::Rc;
-
 use crate::environment::Environment;
 use crate::error::ExprError;
 use crate::lexer::token::TokenType;
 use crate::parser::{
-    Assign, Binary, Block, ExprType, Expression, Group, IfStatement, Literal, Parser, Print, Unary,
-    Var, Variable, Visitor, WhileStatement,
+    Assign, Binary, Block, Call, ExprType, Expression, Group, IfStatement, Literal, Parser, Print,
+    Unary, Var, Variable, Visitor, WhileStatement,
 };
 use crate::value::{Constants, Value};
 use std::borrow::Borrow;
+use std::rc::Rc;
 
 pub struct Evaluator {
-    constants: Constants,
+    pub constants: Constants,
     globals: Environment,
 }
 
 impl Evaluator {
     pub fn new() -> Evaluator {
+        let mut env = Environment::new();
+        env.set_default_functions();
         Evaluator {
             constants: Constants::new(),
-            globals: Environment::new(),
+            globals: env,
         }
     }
 
@@ -42,6 +43,7 @@ impl Evaluator {
                         Value::String(string_value) => println!("{}", string_value),
                         Value::Boolean(boolean_value) => println!("{}", boolean_value),
                         Value::Nil => (),
+                        Value::Function(_) => println!("Function"),
                     };
                 }
             }
@@ -69,6 +71,7 @@ impl Evaluator {
             ExprType::WhileStatement(while_statement) => {
                 self.visit_while_statement(while_statement)
             }
+            ExprType::Call(call) => self.visit_call(call),
         }
     }
 
@@ -290,5 +293,27 @@ impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
             self.accept(&*expr.body)?;
         }
         Ok(Rc::clone(&self.constants.nil))
+    }
+
+    fn visit_call(&mut self, expr: &Call) -> Result<Rc<Value>, ExprError> {
+        let callee = self.accept(&*expr.callee)?;
+        let mut arguments = Vec::new();
+        for arg in &expr.arguments {
+            arguments.push(self.accept(&*arg)?);
+        }
+        match &*callee {
+            Value::Function(function) => {
+                let func = function;
+                if func.arity() != arguments.len() {
+                    return Err(ExprError::RunTimeMessage(String::from(format!(
+                        "Expected {} args but got {}",
+                        func.arity(),
+                        arguments.len()
+                    ))));
+                }
+                func.call(self, arguments)
+            }
+            _ => Err(ExprError::RunTimeMessage(String::from(" Not a callable"))),
+        }
     }
 }

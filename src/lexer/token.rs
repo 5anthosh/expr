@@ -31,6 +31,7 @@ pub enum TokenType {
     Else,
     While,
     For,
+    COMMA,
 }
 
 #[derive(Debug)]

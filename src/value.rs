@@ -1,10 +1,12 @@
+use crate::evaluator::Callable;
 use std::rc::Rc;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Value {
     Boolean(bool),
     Float(f64),
     String(String),
+    Function(Rc<dyn Callable>),
     Nil,
 }
 
@@ -39,6 +41,10 @@ impl Value {
                 Value::Float(value2) => value == value2,
                 _ => false,
             },
+            Value::Function(_) => match another {
+                Value::Function(_) => true,
+                _ => false,
+            },
         };
     }
 }
@@ -50,6 +56,7 @@ impl ToString for Value {
             Value::Float(value) => format!("{}", value),
             Value::Boolean(value) => format!("{}", value),
             Value::String(value) => value.to_string(),
+            Value::Function(_) => String::from("Function"),
         }
     }
 }

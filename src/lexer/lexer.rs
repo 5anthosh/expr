@@ -125,6 +125,7 @@ impl Lexer {
             ';' => Ok(self.token_type(TokenType::SemiColon)),
             '{' => Ok(self.token_type(TokenType::OpenBrace)),
             '}' => Ok(self.token_type(TokenType::CloseBrace)),
+            ',' => Ok(self.token_type(TokenType::COMMA)),
             '=' => {
                 if self.peek(0) == '=' {
                     self.eat();
