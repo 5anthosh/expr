@@ -4,13 +4,13 @@ use crate::parser::Function;
 use crate::value::Value;
 use std::rc::Rc;
 
-pub trait Callable {
+pub trait Callable<'a> {
     fn arity(&self) -> usize;
     fn call(
         &self,
-        evaluator: &mut Evaluator,
-        arguments: Vec<Rc<Value>>,
-    ) -> Result<Rc<Value>, ExprError>;
+        evaluator: &'a mut Evaluator<'a>,
+        arguments: Vec<Rc<Value<'a>>>,
+    ) -> Result<Rc<Value<'a>>, ExprError>;
     fn to_string(&self) -> String;
 }
 
@@ -18,16 +18,16 @@ pub struct TullyCallable<'a> {
     declaration: &'a Function<'a>,
 }
 
-impl<'a> Callable for TullyCallable<'a> {
+impl<'a> Callable<'a> for TullyCallable<'a> {
     fn arity(&self) -> usize {
         self.declaration.params.len()
     }
-
+    
     fn call(
         &self,
-        evaluator: &mut Evaluator,
-        arguments: Vec<Rc<Value>>,
-    ) -> Result<Rc<Value>, ExprError> {
+        evaluator: &'a mut Evaluator<'a>,
+        arguments: Vec<Rc<Value<'a>>>,
+    ) -> Result<Rc<Value<'a>>, ExprError> {
         evaluator.globals.new_env();
         for (i, param) in self.declaration.params.iter().enumerate() {
             evaluator

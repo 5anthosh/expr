@@ -218,7 +218,7 @@ impl Parser {
                 kind
             ))));
         }
-        let name = self.previous();
+        let name = self.previous().clone();
         if !self.match_token(&[OpenParen]) {
             return Err(ExprError::ParserErrorMessage(String::from(format!(
                 "Expect '(' after {} name",
@@ -238,7 +238,7 @@ impl Parser {
                         "Expect parameter name",
                     )));
                 }
-                params.push(self.previous());
+                params.push(self.previous().clone());
                 if self.match_token(&[COMMA]) {
                     continue;
                 }
@@ -320,7 +320,7 @@ impl Parser {
     fn equality(&self) -> Result<ExprType, ExprError> {
         let mut expr = self.comparator()?;
         while self.match_token(&[EqualEqual, BangEqual]) {
-            let operator = self.previous();
+            let operator = self.previous().clone();
             let right = self.comparator()?;
             expr = ExprType::Binary(Binary {
                 left: Box::new(expr),
@@ -334,7 +334,7 @@ impl Parser {
     fn comparator(&self) -> Result<ExprType, ExprError> {
         let mut expr = self.addition()?;
         while self.match_token(&[Greater, GreaterEqual, Lesser, LesserEqual]) {
-            let operator = self.previous();
+            let operator = self.previous().clone();
             let right = self.addition()?;
             expr = ExprType::Binary(Binary {
                 left: Box::new(expr),
@@ -348,7 +348,7 @@ impl Parser {
     fn addition(&self) -> Result<ExprType, ExprError> {
         let mut expr = self.multiply()?;
         while self.match_token(&[Plus, Minus]) {
-            let operator = self.previous();
+            let operator = self.previous().clone();
             let right = self.multiply()?;
             expr = ExprType::Binary(Binary {
                 left: Box::new(expr),
@@ -362,7 +362,7 @@ impl Parser {
     fn multiply(&self) -> Result<ExprType, ExprError> {
         let mut expr = self.unary()?;
         while self.match_token(&[Star, Slash]) {
-            let operator = self.previous();
+            let operator = self.previous().clone();
             let right = self.unary()?;
             expr = ExprType::Binary(Binary {
                 left: Box::new(expr),
@@ -375,7 +375,7 @@ impl Parser {
 
     fn unary(&self) -> Result<ExprType, ExprError> {
         while self.match_token(&[Plus, Minus, Bang]) {
-            let operator = self.previous();
+            let operator = self.previous().clone();
             let expression = self.unary()?;
             return Ok(ExprType::Unary(Unary {
                 expression: Box::new(expression),
@@ -456,7 +456,7 @@ impl Parser {
         if self.match_token(&[TokenType::Identifier]) {
             let t = self.previous();
             return Ok(ExprType::Variable(Variable {
-                name: t.lexeme.clone(),
+                name: &t.lexeme,
             }));
         }
 

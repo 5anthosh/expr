@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TokenType {
     Plus,
     Star,
@@ -35,7 +35,7 @@ pub enum TokenType {
     Fun,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Token {
     pub tt: TokenType,
     pub lexeme: String,
