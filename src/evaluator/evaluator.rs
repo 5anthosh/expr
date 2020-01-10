@@ -4,7 +4,7 @@ use crate::evaluator::callable::TullyCallable;
 use crate::lexer::token::TokenType;
 use crate::parser::{
     Assign, Binary, Block, Call, ExprType, Expression, Function, Group, IfStatement, Literal,
-    Parser, Print, Unary, Var, Variable, Visitor, WhileStatement,
+    Parser, Print, Return, Unary, Var, Variable, Visitor, WhileStatement,
 };
 use crate::value::LiteralValue;
 use crate::value::{Constants, Value};
@@ -31,6 +31,7 @@ impl Evaluator {
         let ast = parser.parse();
         match ast {
             Ok(statements) => {
+                // println!("{:?}", statements);
                 for statement in statements {
                     let value = self.execute(&statement);
                     let value = match value {
@@ -75,6 +76,7 @@ impl Evaluator {
             }
             ExprType::Call(call) => self.visit_call(call),
             ExprType::Function(function) => self.visit_function(function),
+            ExprType::Return(return_statement) => self.visit_return(return_statement),
         }
     }
 
@@ -343,5 +345,15 @@ impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
         self.globals
             .define(name, Rc::new(Value::Function(Rc::new(function))));
         Ok(Rc::clone(&self.constants.nil))
+    }
+
+    fn visit_return(&mut self, expr: &Return) -> Result<Rc<Value>, ExprError> {
+        match &expr.value {
+            Some(value) => {
+                let value = self.accept(&*value)?;
+                Err(ExprError::Return(value))
+            }
+            None => Err(ExprError::Return(Rc::clone(&self.constants.nil))),
+        }
     }
 }

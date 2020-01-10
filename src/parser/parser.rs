@@ -6,7 +6,7 @@ use crate::lexer::token::TokenType::{
 };
 use crate::lexer::token::{Token, TokenType};
 use crate::lexer::Lexer;
-use crate::parser::expr::{Binary, Call, ExprType, Function, Group, Literal};
+use crate::parser::expr::{Binary, Call, ExprType, Function, Group, Literal, Return};
 use crate::parser::{
     self, Assign, Block, Expression, IfStatement, Unary, Var, Variable, WhileStatement,
 };
@@ -64,7 +64,24 @@ impl Parser {
         if self.match_token(&[TokenType::For]) {
             return self.for_statement();
         }
+        if self.match_token(&[TokenType::Return]) {
+            return self.return_statement();
+        }
         self.expression_statement()
+    }
+
+    fn return_statement(&self) -> Result<ExprType, ExprError> {
+        let keyword = self.previous().clone();
+        let mut value = None;
+        if !self.check(&SemiColon) {
+            value = Some(Box::new(self.expression()?));
+        }
+        if !self.match_token(&[SemiColon]) {
+            return Err(ExprError::ParserErrorMessage(String::from(
+                "Expecting ';' after return value",
+            )));
+        }
+        return Ok(ExprType::Return(Return { keyword, value }));
     }
 
     fn var_statement(&self) -> Result<ExprType, ExprError> {

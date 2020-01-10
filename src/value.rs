@@ -1,4 +1,5 @@
 use crate::evaluator::Callable;
+use std::fmt::{self, Debug, Formatter};
 use std::rc::Rc;
 
 #[derive(Clone)]
@@ -27,6 +28,12 @@ impl<'a> Constants {
         Constants {
             nil: Rc::new(Value::Nil),
         }
+    }
+}
+
+impl Debug for Value {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", self.to_string())
     }
 }
 

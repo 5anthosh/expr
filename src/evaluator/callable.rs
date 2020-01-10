@@ -3,6 +3,7 @@ use crate::evaluator::Evaluator;
 use crate::parser::Function;
 use crate::value::Value;
 use std::rc::Rc;
+use std::result::Result::Err;
 
 pub trait Callable {
     fn arity(&self) -> usize;
@@ -34,8 +35,14 @@ impl Callable for TullyCallable {
                 .globals
                 .define(&param.lexeme, Rc::clone(&arguments[i]));
         }
-        evaluator.execute_block(&self.declaration.body.statements, false)?;
+        let value = evaluator.execute_block(&self.declaration.body.statements, false);
         evaluator.globals.delete_recent();
+        if let Err(err) = value {
+            if let ExprError::Return(value) = err {
+                return Ok(value);
+            }
+            return Err(err);
+        }
         return Ok(Rc::clone(&evaluator.constants.nil));
     }
 

@@ -33,6 +33,7 @@ pub enum TokenType {
     For,
     COMMA,
     Fun,
+    Return,
 }
 
 #[derive(Debug, Clone)]

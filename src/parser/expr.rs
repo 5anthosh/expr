@@ -20,6 +20,7 @@ pub trait Visitor<T> {
     fn visit_while_statement(&mut self, expr: &WhileStatement) -> T;
     fn visit_call(&mut self, expr: &Call) -> T;
     fn visit_function(&mut self, expr: &Function) -> T;
+    fn visit_return(&mut self, expr: &Return) -> T;
 }
 
 #[derive(Clone, Debug)]
@@ -45,6 +46,7 @@ pub enum ExprType {
     WhileStatement(WhileStatement),
     Call(Call),
     Function(Function),
+    Return(Return),
 }
 
 impl Expr for Binary {
@@ -202,5 +204,17 @@ pub struct Function {
 impl Expr for Function {
     fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
         return visitor.visit_function(&self);
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Return {
+    pub keyword: Token,
+    pub value: Option<Box<ExprType>>,
+}
+
+impl Expr for Return {
+    fn accept<V>(self, mut visitor: impl Visitor<V>) -> V {
+        return visitor.visit_return(&self);
     }
 }

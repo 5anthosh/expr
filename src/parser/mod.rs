@@ -12,6 +12,7 @@ pub use expr::Group;
 pub use expr::IfStatement;
 pub use expr::Literal;
 pub use expr::Print;
+pub use expr::Return;
 pub use expr::Unary;
 pub use expr::Var;
 pub use expr::Variable;
