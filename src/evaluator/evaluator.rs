@@ -9,16 +9,15 @@ use crate::parser::{
 };
 use crate::value::{Constants, Value};
 use crate::value::{LiteralValue, TullyFunction};
-use std::borrow::{Borrow, BorrowMut};
+use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-
+#[derive(Debug)]
 pub struct Evaluator {
     pub constants: Constants,
     pub globals: Environment,
 }
-
 
 impl<'a> Evaluator {
     pub fn new() -> Evaluator {
@@ -127,7 +126,7 @@ impl<'a> Evaluator {
         new_block: bool,
     ) -> Result<(), ExprError> {
         if new_block {
-            self.globals.borrow_mut().new_env();
+            self.globals.new_env();
         }
         for statement in statements {
             self.execute(&*statement)?;
@@ -330,6 +329,7 @@ impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
                 let func = function;
                 match func {
                     TullyFunction::NFunction(nf) => {
+                        //                        println!("Calling {:?}", nf.deref().borrow().to_string());
                         let nf: &RefCell<TullyCallable> = nf.borrow();
                         if nf.borrow().arity() != arguments.len() {
                             return Err(ExprError::RunTimeMessage(String::from(format!(

@@ -1,8 +1,8 @@
 use crate::evaluator::{Callable, TullyCallable};
 use std::cell::RefCell;
 use std::fmt::{self, Debug, Formatter};
-use std::rc::Rc;
 use std::ops::Deref;
+use std::rc::Rc;
 
 #[derive(Clone)]
 pub enum Value {
@@ -36,6 +36,7 @@ pub enum LiteralValue {
     Nil,
 }
 
+#[derive(Debug)]
 pub struct Constants {
     pub nil: Rc<Value>,
 }

@@ -306,9 +306,17 @@ impl Parser {
                 expression: Box::new(expr),
             }));
         }
-        return Err(ExprError::ParserErrorMessage(String::from(
-            "Expect ';' after expression",
-        )));
+        return Err(ExprError::ParserErrorMessage(
+            self.error_message("Expect ';' after expression"),
+        ));
+    }
+
+    fn error_message(&self, message: &str) -> String {
+        let t = self.peek();
+        if let Some(t) = t {
+            return format!("Line {} {} : {} ", t.line, t.lexeme, message);
+        }
+        return String::from(message);
     }
     fn expression(&self) -> Result<ExprType, ExprError> {
         self.assignment()

@@ -2,7 +2,7 @@ use crate::error::ExprError;
 use crate::evaluator::Evaluator;
 use crate::parser::Function;
 use crate::value::{TullyFunction, Value};
-use std::borrow::{Borrow};
+use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -24,9 +24,8 @@ pub struct TullyCallable {
 }
 
 impl TullyCallable {
-
     pub fn add_closure(&mut self, closure: Rc<RefCell<HashMap<String, Rc<Value>>>>) {
-        if let Some(closures) = & mut self.closure {
+        if let Some(closures) = &mut self.closure {
             closures.push(closure);
             return;
         }
@@ -55,22 +54,23 @@ impl Callable for TullyCallable {
         evaluator: &mut Evaluator,
         arguments: Vec<Rc<Value>>,
     ) -> Result<Rc<Value>, ExprError> {
+        // println!("calling");
         let mut n = 0;
         if let Some(value) = &self.closure {
             n = value.len();
             evaluator.globals.import_env(value);
         }
         evaluator.globals.new_env();
-
-        print!("{:?}", evaluator.globals.locals);
+        //  println!("env create {:?}", evaluator.globals.locals);
         for (i, param) in self.declaration.params.iter().enumerate() {
             evaluator
                 .globals
                 .define(&param.lexeme, Rc::clone(&arguments[i]));
         }
-
+        // println!("env {:#?}", evaluator.globals);
         let value = evaluator.execute_block(&self.declaration.body.statements, false);
         if let Some(env) = evaluator.globals.delete_recent() {
+            // println!("n {}", n);
             for _i in 0..n {
                 evaluator.globals.delete_recent();
             }
@@ -79,12 +79,13 @@ impl Callable for TullyCallable {
                 if let ExprError::Return(value) = err {
                     if let Value::Function(tf) = value.borrow() {
                         if let TullyFunction::NFunction(tc) = tf {
-                            println!("print");
-                            println!("{:?}", env);
+                            //println!("print");
+                            // println!("{:?}", env);
                             let t = tc.clone();
                             if let Some(closures) = &self.closure {
                                 t.borrow_mut().add_closure_others(closures);
                             }
+                            t.borrow_mut().add_closure(env);
                             return Ok(Rc::new(Value::Function(TullyFunction::NFunction(t))));
                         }
                     }
