@@ -1,14 +1,31 @@
-use crate::evaluator::Callable;
+use crate::evaluator::{Callable, TullyCallable};
+use std::cell::RefCell;
 use std::fmt::{self, Debug, Formatter};
 use std::rc::Rc;
+use std::ops::Deref;
 
 #[derive(Clone)]
 pub enum Value {
     Boolean(bool),
     Float(f64),
     String(String),
-    Function(Rc<dyn Callable>),
+    Function(TullyFunction),
     Nil,
+}
+
+#[derive(Clone)]
+pub enum TullyFunction {
+    NFunction(Rc<RefCell<TullyCallable>>),
+    NativeFunction(Rc<dyn Callable>),
+}
+
+impl TullyFunction {
+    pub fn to_string(&self) -> String {
+        match self {
+            TullyFunction::NFunction(tc) => tc.deref().borrow().to_string(),
+            TullyFunction::NativeFunction(nf) => nf.to_string(),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

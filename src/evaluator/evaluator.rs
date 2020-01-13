@@ -1,22 +1,26 @@
 use crate::environment::Environment;
 use crate::error::ExprError;
 use crate::evaluator::callable::TullyCallable;
+use crate::evaluator::Callable;
 use crate::lexer::token::TokenType;
 use crate::parser::{
     Assign, Binary, Block, Call, ExprType, Expression, Function, Group, IfStatement, Literal,
     Parser, Print, Return, Unary, Var, Variable, Visitor, WhileStatement,
 };
-use crate::value::LiteralValue;
 use crate::value::{Constants, Value};
-use std::borrow::Borrow;
+use crate::value::{LiteralValue, TullyFunction};
+use std::borrow::{Borrow, BorrowMut};
+use std::cell::RefCell;
 use std::rc::Rc;
+
 
 pub struct Evaluator {
     pub constants: Constants,
     pub globals: Environment,
 }
 
-impl Evaluator {
+
+impl<'a> Evaluator {
     pub fn new() -> Evaluator {
         let mut env = Environment::new();
         env.set_default_functions();
@@ -123,7 +127,7 @@ impl Evaluator {
         new_block: bool,
     ) -> Result<(), ExprError> {
         if new_block {
-            self.globals.new_env();
+            self.globals.borrow_mut().new_env();
         }
         for statement in statements {
             self.execute(&*statement)?;
@@ -324,14 +328,29 @@ impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
         match &*callee {
             Value::Function(function) => {
                 let func = function;
-                if func.arity() != arguments.len() {
-                    return Err(ExprError::RunTimeMessage(String::from(format!(
-                        "Expected {} args but got {}",
-                        func.arity(),
-                        arguments.len()
-                    ))));
+                match func {
+                    TullyFunction::NFunction(nf) => {
+                        let nf: &RefCell<TullyCallable> = nf.borrow();
+                        if nf.borrow().arity() != arguments.len() {
+                            return Err(ExprError::RunTimeMessage(String::from(format!(
+                                "Expected {} args but got {}",
+                                nf.borrow().arity(),
+                                arguments.len()
+                            ))));
+                        }
+                        nf.borrow().call(self, arguments)
+                    }
+                    TullyFunction::NativeFunction(nf) => {
+                        if nf.arity() != arguments.len() {
+                            return Err(ExprError::RunTimeMessage(String::from(format!(
+                                "Expected {} args but got {}",
+                                nf.arity(),
+                                arguments.len()
+                            ))));
+                        }
+                        nf.call(self, arguments)
+                    }
                 }
-                func.call(self, arguments)
             }
             _ => Err(ExprError::RunTimeMessage(String::from(" Not a callable"))),
         }
@@ -341,9 +360,14 @@ impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
         let name = &expr.name.lexeme;
         let function = TullyCallable {
             declaration: expr.clone(),
+            closure: None,
         };
-        self.globals
-            .define(name, Rc::new(Value::Function(Rc::new(function))));
+        self.globals.define(
+            name,
+            Rc::new(Value::Function(TullyFunction::NFunction(Rc::new(
+                RefCell::new(function),
+            )))),
+        );
         Ok(Rc::clone(&self.constants.nil))
     }
 
