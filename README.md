@@ -1,2 +1,2 @@
 # expr
-> Simple scripting language in developement
+> Simple scripting language in development

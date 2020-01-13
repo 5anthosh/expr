@@ -30,32 +30,14 @@ impl<'a> Evaluator {
         }
     }
 
-    pub fn eval(&mut self, source: String) {
+    pub fn eval(&mut self, source: &str) -> Result<(), TullyError> {
         let mut parser = Parser::new(String::from(source.trim()));
-        let ast = parser.parse();
-        match ast {
-            Ok(statements) => {
-                // println!("{:?}", statements);
-                for statement in statements {
-                    let value = self.execute(&statement);
-                    let value = match value {
-                        Ok(value) => value,
-                        Err(e) => {
-                            eprintln!("{}", e.to_string());
-                            return;
-                        }
-                    };
-                    match value.borrow() {
-                        Value::Float(val) => println!("{}", val),
-                        Value::String(string_value) => println!("{}", string_value),
-                        Value::Boolean(boolean_value) => println!("{}", boolean_value),
-                        Value::Nil => (),
-                        Value::Function(_) => println!("Function"),
-                    };
-                }
-            }
-            Err(e) => eprintln!("{}", e.to_string()),
+        let ast = parser.parse()?;
+        // println!("{:?}", statements);
+        for statement in ast {
+            self.execute(&statement)?;
         }
+        Ok(())
     }
 
     fn execute(&mut self, ast: &ExprType) -> Result<Rc<Value>, TullyError> {

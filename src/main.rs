@@ -3,6 +3,7 @@ use std::fs;
 use std::io;
 use std::io::Write;
 
+use std::thread;
 use tully::evaluator::Evaluator;
 
 fn main() {
@@ -41,7 +42,9 @@ fn command_line() {
                 break;
             }
         }
-        evaluator.eval(expression);
+        if let Err(e) = evaluator.eval(&expression) {
+            eprintln!("{}", e.to_string());
+        }
     }
 }
 
@@ -49,7 +52,14 @@ fn read_from_file(name: &String) {
     let contents = fs::read_to_string(name);
     match contents {
         Ok(source) => {
-            Evaluator::new().eval(source);
+            let handler = thread::spawn(move || {
+                if let Err(e) = Evaluator::new().eval(&source) {
+                    eprintln!("{}", e.to_string());
+                }
+            });
+            if let Err(e) = handler.join() {
+                eprintln!("{:?}", e);
+            }
         }
         Err(e) => eprintln!("Unable to read from file {}", e.to_string()),
     };

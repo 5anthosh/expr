@@ -6,6 +6,7 @@ use crate::evaluator::{Callable, Evaluator};
 use crate::value::Value;
 
 pub struct Clock;
+
 impl Callable for Clock {
     fn arity(&self) -> usize {
         return 0;
@@ -24,7 +25,7 @@ impl Callable for Clock {
                 return Err(TullyError::RunTimeMessage(String::from(format!(
                     "{}",
                     e.to_string()
-                ))))
+                ))));
             }
         };
         Ok(Rc::new(Value::Float(since_the_epoch.as_secs_f64())))
