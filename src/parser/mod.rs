@@ -1,6 +1,3 @@
-mod expr;
-mod parser;
-
 pub use expr::Assign;
 pub use expr::Binary;
 pub use expr::Block;
@@ -19,3 +16,6 @@ pub use expr::Variable;
 pub use expr::Visitor;
 pub use expr::WhileStatement;
 pub use parser::Parser;
+
+mod expr;
+mod parser;

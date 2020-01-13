@@ -1,4 +1,4 @@
-use crate::error::ExprError;
+use crate::error::TullyError;
 use crate::lexer::token::{Token, TokenType};
 use crate::tully::Tully;
 
@@ -18,7 +18,7 @@ impl Lexer {
             expr_chars: a,
             start: 0,
             current: 0,
-            line: 0,
+            line: 1,
         };
     }
 
@@ -66,7 +66,7 @@ impl Lexer {
         return c;
     }
 
-    pub fn next_token(&mut self) -> Result<Token, ExprError> {
+    pub fn next_token(&mut self) -> Result<Token, TullyError> {
         if self.is_at_end() {
             return Ok(Token::end_of_line());
         }
@@ -98,24 +98,21 @@ impl Lexer {
         }
     }
 
-    fn scan_string(&mut self) -> Result<Token, ExprError> {
+    fn scan_string(&mut self) -> Result<Token, TullyError> {
         while self.peek(0) != '"' && !self.is_at_end() {
             if self.peek(0) == '\n' {
                 self.line += 1;
-                self.eat();
             }
             self.eat();
         }
         if self.is_at_end() {
-            return Err(ExprError::LexicalErrorMessage(String::from(
-                "Unterminated string",
-            )));
+            return Err(self.error("Unterminated string"));
         }
         self.eat();
         Ok(self.token_type(TokenType::String))
     }
 
-    fn scan_token(&mut self) -> Result<Token, ExprError> {
+    fn scan_token(&mut self) -> Result<Token, TullyError> {
         let c = self.space();
         match c {
             '+' => Ok(self.token_type(TokenType::Plus)),
@@ -165,17 +162,18 @@ impl Lexer {
                 if c.is_alphanumeric() {
                     return Ok(self.identifier());
                 }
-                return Err(ExprError::LexicalErrorMessage(format!(
-                    "Unexpected character {}",
-                    c
-                )));
+                return Err(self.error(&format!("Unexpected character {}", c)));
             }
         }
+    }
+
+    fn error(&self, message: &str) -> TullyError {
+        TullyError::lexical_error_message(self.line, message)
     }
 }
 
 impl<'a> Iterator for Lexer {
-    type Item = Result<Token, ExprError>;
+    type Item = Result<Token, TullyError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let token = self.next_token();

@@ -2,6 +2,7 @@ use std::env;
 use std::fs;
 use std::io;
 use std::io::Write;
+
 use tully::evaluator::Evaluator;
 
 fn main() {

@@ -1,2 +1,3 @@
-mod environment;
 pub use environment::Environment;
+
+mod environment;

@@ -113,7 +113,7 @@ impl Expr for Print {
 
 #[derive(Debug, Clone)]
 pub struct Variable {
-    pub name: String,
+    pub name: Token,
 }
 
 impl Expr for Variable {
@@ -136,7 +136,7 @@ impl Expr for Var {
 
 #[derive(Clone, Debug)]
 pub struct Assign {
-    pub name: String,
+    pub name: Token,
     pub initializer: Box<ExprType>,
 }
 
@@ -184,6 +184,7 @@ impl Expr for WhileStatement {
 
 #[derive(Clone, Debug)]
 pub struct Call {
+    pub paren: Token,
     pub callee: Box<ExprType>,
     pub arguments: Vec<Box<ExprType>>,
 }

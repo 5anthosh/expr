@@ -1,8 +1,9 @@
-use crate::evaluator::{Callable, TullyCallable};
 use std::cell::RefCell;
 use std::fmt::{self, Debug, Formatter};
 use std::ops::Deref;
 use std::rc::Rc;
+
+use crate::evaluator::{Callable, TullyCallable};
 
 #[derive(Clone)]
 pub enum Value {

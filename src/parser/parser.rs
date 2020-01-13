@@ -1,4 +1,6 @@
-use crate::error::ExprError;
+use std::cell::Cell;
+
+use crate::error::TullyError;
 use crate::lexer::token::TokenType::{
     Bang, BangEqual, CloseBrace, CloseParen, Else, Equal, EqualEqual, Greater, GreaterEqual,
     Identifier, Lesser, LesserEqual, Minus, OpenBrace, OpenParen, Plus, Print, SemiColon, Slash,
@@ -11,7 +13,6 @@ use crate::parser::{
     self, Assign, Block, Expression, IfStatement, Unary, Var, Variable, WhileStatement,
 };
 use crate::value::LiteralValue;
-use std::cell::Cell;
 
 pub struct Parser {
     pub source: String,
@@ -28,7 +29,7 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<ExprType>, ExprError> {
+    pub fn parse(&mut self) -> Result<Vec<ExprType>, TullyError> {
         let lexer = Lexer::new(&self.source);
         for token in lexer {
             self.tokens.push(token?);
@@ -42,7 +43,7 @@ impl Parser {
         Ok(statements)
     }
 
-    fn statement(&self) -> Result<ExprType, ExprError> {
+    fn statement(&self) -> Result<ExprType, TullyError> {
         if self.match_token(&[Print]) {
             return self.print_statement();
         }
@@ -70,109 +71,68 @@ impl Parser {
         self.expression_statement()
     }
 
-    fn return_statement(&self) -> Result<ExprType, ExprError> {
+    fn return_statement(&self) -> Result<ExprType, TullyError> {
         let keyword = self.previous().clone();
         let mut value = None;
         if !self.check(&SemiColon) {
             value = Some(Box::new(self.expression()?));
         }
-        if !self.match_token(&[SemiColon]) {
-            return Err(ExprError::ParserErrorMessage(String::from(
-                "Expecting ';' after return value",
-            )));
-        }
+        self.expect_token_or(SemiColon, "Expecting ';' after return value")?;
         return Ok(ExprType::Return(Return { keyword, value }));
     }
 
-    fn var_statement(&self) -> Result<ExprType, ExprError> {
-        if self.match_token(&[Identifier]) {
-            let t = self.previous();
-            if self.match_token(&[Equal]) {
-                let value = self.expression()?;
-                if self.match_token(&[SemiColon]) {
-                    return Ok(ExprType::Var(Var {
-                        name: t.lexeme.clone(),
-                        initializer: Some(Box::new(value)),
-                    }));
-                }
-                return Err(ExprError::ParserErrorMessage(String::from(
-                    "Expect ';' after variable declaration",
-                )));
-            }
-            if self.match_token(&[SemiColon]) {
-                return Ok(ExprType::Var(Var {
-                    name: t.lexeme.clone(),
-                    initializer: None,
-                }));
-            }
-            return Err(ExprError::ParserErrorMessage(String::from(
-                "Expect ';' after variable declaration",
-            )));
-        }
-        Err(ExprError::ParserErrorMessage(String::from(
-            "Expecting variable name",
-        )))
-    }
-
-    fn print_statement(&self) -> Result<ExprType, ExprError> {
-        let expr = self.expression()?;
-        if self.match_token(&[SemiColon]) {
-            return Ok(ExprType::Print(parser::Print {
-                expression: Box::new(expr),
+    fn var_statement(&self) -> Result<ExprType, TullyError> {
+        self.expect_token_or(Identifier, "Expecting variable name")?;
+        let t = self.previous();
+        if self.match_token(&[Equal]) {
+            let value = self.expression()?;
+            self.expect_token_or(SemiColon, "Expect ';' after variable declaration")?;
+            return Ok(ExprType::Var(Var {
+                name: t.lexeme.clone(),
+                initializer: Some(Box::new(value)),
             }));
         }
-        return Err(ExprError::ParserErrorMessage(String::from(format!(
-            "Expect ';' after value {:?}",
-            self.peek()
-        ))));
+        self.expect_token_or(SemiColon, "Expect ';' after variable declaration")?;
+        return Ok(ExprType::Var(Var {
+            name: t.lexeme.clone(),
+            initializer: None,
+        }));
     }
 
-    fn if_statement(&self) -> Result<ExprType, ExprError> {
-        if self.match_token(&[OpenParen]) {
-            let condition = Box::new(self.expression()?);
-            if self.match_token(&[CloseParen]) {
-                let then_branch = Box::new(self.statement()?);
-                let mut else_branch = None;
-                if self.match_token(&[Else]) {
-                    else_branch = Some(Box::new(self.statement()?));
-                }
-                return Ok(ExprType::IfStatement(IfStatement {
-                    condition,
-                    then_branch,
-                    else_branch,
-                }));
-            }
-            return Err(ExprError::ParserErrorMessage(String::from(
-                "Expecting ')' after condition",
-            )));
-        }
-        return Err(ExprError::ParserErrorMessage(String::from(
-            "Expecting '(' after If",
-        )));
+    fn print_statement(&self) -> Result<ExprType, TullyError> {
+        let expr = self.expression()?;
+        self.expect_token_or(SemiColon, "Expect ';' after value ")?;
+        return Ok(ExprType::Print(parser::Print {
+            expression: Box::new(expr),
+        }));
     }
 
-    fn while_statement(&self) -> Result<ExprType, ExprError> {
-        if self.match_token(&[OpenParen]) {
-            let condition = Box::new(self.expression()?);
-            if self.match_token(&[CloseParen]) {
-                let body = Box::new(self.statement()?);
-                return Ok(ExprType::WhileStatement(WhileStatement { condition, body }));
-            }
-            return Err(ExprError::ParserErrorMessage(String::from(
-                "Expecting ')' after condition",
-            )));
+    fn if_statement(&self) -> Result<ExprType, TullyError> {
+        self.expect_token_or(OpenParen, "Expecting '(' after If")?;
+        let condition = Box::new(self.expression()?);
+        self.expect_token_or(CloseParen, "Expecting ')' after condition")?;
+        let then_branch = Box::new(self.statement()?);
+        let mut else_branch = None;
+        if self.match_token(&[Else]) {
+            else_branch = Some(Box::new(self.statement()?));
         }
-        return Err(ExprError::ParserErrorMessage(String::from(
-            "Expecting '(' after While",
-        )));
+        return Ok(ExprType::IfStatement(IfStatement {
+            condition,
+            then_branch,
+            else_branch,
+        }));
     }
 
-    fn for_statement(&self) -> Result<ExprType, ExprError> {
-        if !self.match_token(&[OpenParen]) {
-            return Err(ExprError::ParserErrorMessage(String::from(
-                "Expecting '(' after for",
-            )));
-        }
+    fn while_statement(&self) -> Result<ExprType, TullyError> {
+        self.expect_token_or(OpenParen, "Expecting '(' after While")?;
+        let condition = Box::new(self.expression()?);
+        self.expect_token_or(CloseParen, "Expecting ')' after condition")?;
+        let body = Box::new(self.statement()?);
+        return Ok(ExprType::WhileStatement(WhileStatement { condition, body }));
+    }
+
+    fn for_statement(&self) -> Result<ExprType, TullyError> {
+        self.expect_token_or(OpenParen, "Expecting '(' after for")?;
         let mut _initializer = None;
         if self.match_token(&[SemiColon]) {
             _initializer = None
@@ -185,20 +145,12 @@ impl Parser {
         if !self.check(&SemiColon) {
             condition = Some(self.expression()?);
         }
-        if !self.match_token(&[SemiColon]) {
-            return Err(ExprError::ParserErrorMessage(String::from(
-                "Expecting ';' after condition",
-            )));
-        }
+        self.expect_token_or(SemiColon, "Expecting ';' after condition")?;
         let mut increment = None;
         if !self.check(&CloseParen) {
             increment = Some(self.expression()?);
         }
-        if !self.match_token(&[CloseParen]) {
-            return Err(ExprError::ParserErrorMessage(String::from(
-                "Expecting ')' after clauses",
-            )));
-        }
+        self.expect_token_or(CloseParen, "Expecting ')' after clauses")?;
         let mut body = self.statement()?;
         if let Some(increment) = increment {
             body = ExprType::Block(Block {
@@ -228,33 +180,20 @@ impl Parser {
         return Ok(body);
     }
 
-    fn function(&self, kind: String) -> Result<ExprType, ExprError> {
-        if !self.match_token(&[Identifier]) {
-            return Err(ExprError::ParserErrorMessage(String::from(format!(
-                "Expect {} name",
-                kind
-            ))));
-        }
+    fn function(&self, kind: String) -> Result<ExprType, TullyError> {
+        self.expect_token_or(Identifier, &format!("Expect {} name", kind))?;
         let name = self.previous().clone();
-        if !self.match_token(&[OpenParen]) {
-            return Err(ExprError::ParserErrorMessage(String::from(format!(
-                "Expect '(' after {} name",
-                kind
-            ))));
-        }
+        self.expect_token_or(OpenParen, &format!("Expect '(' after {} name", kind))?;
         let mut params = Vec::new();
         if !self.check(&CloseParen) {
             loop {
                 if params.len() >= 255 {
-                    return Err(ExprError::ParserErrorMessage(String::from(
+                    return Err(Parser::error(
+                        self.peek(),
                         "Cannot have more than 255 params",
-                    )));
+                    ));
                 }
-                if !self.match_token(&[Identifier]) {
-                    return Err(ExprError::ParserErrorMessage(String::from(
-                        "Expect parameter name",
-                    )));
-                }
+                self.expect_token_or(Identifier, "Expect parameter name")?;
                 params.push(self.previous().clone());
                 if self.match_token(&[COMMA]) {
                     continue;
@@ -262,17 +201,8 @@ impl Parser {
                 break;
             }
         }
-        if !self.match_token(&[CloseParen]) {
-            return Err(ExprError::ParserErrorMessage(String::from(
-                "Expect ')' after parameters",
-            )));
-        }
-        if !self.match_token(&[OpenBrace]) {
-            return Err(ExprError::ParserErrorMessage(String::from(format!(
-                "Expect '{{' before {} body",
-                kind
-            ))));
-        }
+        self.expect_token_or(CloseParen, "Expect ')' after parameters")?;
+        self.expect_token_or(OpenBrace, "Expect '{' before {} body")?;
         let body = Box::new(self.block()?);
         match *body {
             ExprType::Block(value) => Ok(ExprType::Function(Function {
@@ -280,49 +210,32 @@ impl Parser {
                 params,
                 body: value,
             })),
-            _ => Err(ExprError::ParserErrorMessage(String::from(
-                "Expecting block",
-            ))),
+            _ => Err(Parser::error(self.peek(), "Expecting block")),
         }
     }
 
-    fn block(&self) -> Result<ExprType, ExprError> {
+    fn block(&self) -> Result<ExprType, TullyError> {
         let mut statements = Vec::new();
         while !self.check(&CloseBrace) && !self.at_end() {
             statements.push(Box::new(self.statement()?))
         }
-        if self.match_token(&[CloseBrace]) {
-            return Ok(ExprType::Block(Block { statements }));
-        }
-        Err(ExprError::ParserErrorMessage(String::from(
-            "Expecting } after block",
-        )))
+        self.expect_token_or(CloseBrace, "Expecting } after block")?;
+        Ok(ExprType::Block(Block { statements }))
     }
 
-    fn expression_statement(&self) -> Result<ExprType, ExprError> {
+    fn expression_statement(&self) -> Result<ExprType, TullyError> {
         let expr = self.expression()?;
-        if self.match_token(&[SemiColon]) {
-            return Ok(ExprType::ExpressionStmt(Expression {
-                expression: Box::new(expr),
-            }));
-        }
-        return Err(ExprError::ParserErrorMessage(
-            self.error_message("Expect ';' after expression"),
-        ));
+        self.expect_token_or(SemiColon, "Expect ';' after expression")?;
+        Ok(ExprType::ExpressionStmt(Expression {
+            expression: Box::new(expr),
+        }))
     }
 
-    fn error_message(&self, message: &str) -> String {
-        let t = self.peek();
-        if let Some(t) = t {
-            return format!("Line {} {} : {} ", t.line, t.lexeme, message);
-        }
-        return String::from(message);
-    }
-    fn expression(&self) -> Result<ExprType, ExprError> {
+    fn expression(&self) -> Result<ExprType, TullyError> {
         self.assignment()
     }
 
-    fn assignment(&self) -> Result<ExprType, ExprError> {
+    fn assignment(&self) -> Result<ExprType, TullyError> {
         let left = self.equality()?;
         if self.match_token(&[Equal]) {
             return match &left {
@@ -334,15 +247,16 @@ impl Parser {
                         initializer: Box::new(value),
                     }))
                 }
-                _ => Err(ExprError::ParserErrorMessage(String::from(
+                _ => Err(Parser::error(
+                    self.peek(),
                     "Expecting variable in left side of assignment",
-                ))),
+                )),
             };
         }
         return Ok(left);
     }
 
-    fn equality(&self) -> Result<ExprType, ExprError> {
+    fn equality(&self) -> Result<ExprType, TullyError> {
         let mut expr = self.comparator()?;
         while self.match_token(&[EqualEqual, BangEqual]) {
             let operator = self.previous().clone();
@@ -356,7 +270,7 @@ impl Parser {
         return Ok(expr);
     }
 
-    fn comparator(&self) -> Result<ExprType, ExprError> {
+    fn comparator(&self) -> Result<ExprType, TullyError> {
         let mut expr = self.addition()?;
         while self.match_token(&[Greater, GreaterEqual, Lesser, LesserEqual]) {
             let operator = self.previous().clone();
@@ -370,7 +284,7 @@ impl Parser {
         return Ok(expr);
     }
 
-    fn addition(&self) -> Result<ExprType, ExprError> {
+    fn addition(&self) -> Result<ExprType, TullyError> {
         let mut expr = self.multiply()?;
         while self.match_token(&[Plus, Minus]) {
             let operator = self.previous().clone();
@@ -384,7 +298,7 @@ impl Parser {
         return Ok(expr);
     }
 
-    fn multiply(&self) -> Result<ExprType, ExprError> {
+    fn multiply(&self) -> Result<ExprType, TullyError> {
         let mut expr = self.unary()?;
         while self.match_token(&[Star, Slash]) {
             let operator = self.previous().clone();
@@ -398,7 +312,7 @@ impl Parser {
         return Ok(expr);
     }
 
-    fn unary(&self) -> Result<ExprType, ExprError> {
+    fn unary(&self) -> Result<ExprType, TullyError> {
         while self.match_token(&[Plus, Minus, Bang]) {
             let operator = self.previous().clone();
             let expression = self.unary()?;
@@ -410,17 +324,19 @@ impl Parser {
         self.call()
     }
 
-    fn call(&self) -> Result<ExprType, ExprError> {
+    fn call(&self) -> Result<ExprType, TullyError> {
         let mut expr = self.term()?;
         loop {
             if self.match_token(&[OpenParen]) {
+                let open_paren = self.previous().clone();
                 let mut arguments = Vec::new();
                 if !self.check(&CloseParen) {
                     loop {
                         if arguments.len() >= 255 {
-                            return Err(ExprError::ParserErrorMessage(String::from(
+                            return Err(Parser::error(
+                                self.peek(),
                                 "Can not have more than 255 arguments",
-                            )));
+                            ));
                         }
                         arguments.push(Box::new(self.expression()?));
                         if self.match_token(&[COMMA]) {
@@ -429,12 +345,9 @@ impl Parser {
                         break;
                     }
                 }
-                if !self.match_token(&[CloseParen]) {
-                    return Err(ExprError::ParserErrorMessage(String::from(
-                        "Expecting ')' after arguments",
-                    )));
-                }
+                self.expect_token_or(CloseParen, "Expecting ')' after arguments")?;
                 expr = ExprType::Call(Call {
+                    paren: open_paren,
                     callee: Box::new(expr),
                     arguments,
                 })
@@ -445,7 +358,7 @@ impl Parser {
         return Ok(expr);
     }
 
-    fn term(&self) -> Result<ExprType, ExprError> {
+    fn term(&self) -> Result<ExprType, TullyError> {
         if self.match_token(&[TokenType::Number]) {
             let t = self.previous();
             let number: f64 = t.lexeme.parse().unwrap();
@@ -482,25 +395,18 @@ impl Parser {
 
         if self.match_token(&[TokenType::Identifier]) {
             let t = self.previous();
-            return Ok(ExprType::Variable(Variable {
-                name: t.lexeme.clone(),
-            }));
+            return Ok(ExprType::Variable(Variable { name: t.clone() }));
         }
 
         if self.match_token(&[TokenType::OpenParen]) {
             let group = ExprType::Group(Group {
                 expression: Box::new(self.expression()?),
             });
-            if self.match_token(&[TokenType::CloseParen]) {
-                return Ok(group);
-            }
-            return Err(ExprError::ParserErrorMessage(String::from("Expecting ')'")));
+            self.expect_token_or(TokenType::CloseParen, "Expecting ')'")?;
+            return Ok(group);
         }
 
-        Err(ExprError::ParserErrorMessage(String::from(format!(
-            "Unexpected token {:?}",
-            self.peek()
-        ))))
+        Err(Parser::error(self.peek(), "Unexpected token {:?}"))
     }
 
     fn match_token(&self, types: &[TokenType]) -> bool {
@@ -548,5 +454,16 @@ impl Parser {
 
     fn increment(&self) {
         self.n.set(self.n.get() + 1);
+    }
+
+    fn expect_token_or(&self, tt: TokenType, message: &str) -> Result<&Token, TullyError> {
+        if !self.match_token(&[tt]) {
+            return Err(Parser::error(Some(self.previous()), message));
+        }
+        Ok(self.previous())
+    }
+
+    fn error(tt: Option<&Token>, message: &str) -> TullyError {
+        TullyError::parser_error_message(tt, message)
     }
 }

@@ -1,11 +1,14 @@
-use crate::default::Clock;
-use crate::error::ExprError;
-use crate::value::{TullyFunction, Value};
-use std::collections::HashMap;
 //use std::backtrace::Backtrace;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
+
+use crate::default::Clock;
+use crate::error::TullyError;
+use crate::evaluator::Evaluator;
+use crate::lexer::token::Token;
+use crate::value::{TullyFunction, Value};
 
 #[derive(Debug)]
 pub struct Environment {
@@ -39,20 +42,20 @@ impl Environment {
         return None;
     }
 
-    pub fn assign(&mut self, name: &String, value: Rc<Value>) -> Result<(), ExprError> {
+    pub fn assign(&mut self, name: &Token, value: Rc<Value>) -> Result<(), TullyError> {
         for scope in &self.scopes {
-            if scope.deref().borrow().contains_key(name) {
+            if scope.deref().borrow().contains_key(&name.lexeme) {
                 scope
                     .deref()
                     .borrow_mut()
-                    .insert(name.clone(), Rc::clone(&value));
+                    .insert(name.lexeme.clone(), Rc::clone(&value));
                 return Ok(());
             }
         }
-        return Err(ExprError::RunTimeMessage(format!(
-            "Undefined variable {}",
-            name
-        )));
+        return Err(Evaluator::error(
+            name,
+            &format!("Undefined variable {}", name.lexeme),
+        ));
     }
 
     pub fn new_env(&mut self) {

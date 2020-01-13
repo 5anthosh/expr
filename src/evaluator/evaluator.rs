@@ -1,17 +1,18 @@
+use std::borrow::Borrow;
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use crate::environment::Environment;
-use crate::error::ExprError;
+use crate::error::TullyError;
 use crate::evaluator::callable::TullyCallable;
 use crate::evaluator::Callable;
-use crate::lexer::token::TokenType;
+use crate::lexer::token::{Token, TokenType};
 use crate::parser::{
     Assign, Binary, Block, Call, ExprType, Expression, Function, Group, IfStatement, Literal,
     Parser, Print, Return, Unary, Var, Variable, Visitor, WhileStatement,
 };
 use crate::value::{Constants, Value};
 use crate::value::{LiteralValue, TullyFunction};
-use std::borrow::Borrow;
-use std::cell::RefCell;
-use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct Evaluator {
@@ -57,11 +58,11 @@ impl<'a> Evaluator {
         }
     }
 
-    fn execute(&mut self, ast: &ExprType) -> Result<Rc<Value>, ExprError> {
+    fn execute(&mut self, ast: &ExprType) -> Result<Rc<Value>, TullyError> {
         self.accept(ast)
     }
 
-    pub fn accept(&mut self, expr: &ExprType) -> Result<Rc<Value>, ExprError> {
+    pub fn accept(&mut self, expr: &ExprType) -> Result<Rc<Value>, TullyError> {
         match expr {
             ExprType::Binary(bin) => self.visit_binary_operation(bin),
             ExprType::Literal(lit) => self.visit_literal(lit),
@@ -83,11 +84,11 @@ impl<'a> Evaluator {
         }
     }
 
-    fn check_numbers(left: &Value, right: &Value) -> Result<(f64, f64), ExprError> {
+    fn check_numbers(left: &Value, right: &Value) -> Result<(f64, f64), TullyError> {
         let left_value = match left {
             Value::Float(left_val) => left_val,
             _ => {
-                return Err(ExprError::RunTimeMessage(String::from(
+                return Err(TullyError::RunTimeMessage(String::from(
                     "Expecting float in left side of operation",
                 )));
             }
@@ -95,7 +96,7 @@ impl<'a> Evaluator {
         let right_value = match right {
             Value::Float(right_value) => right_value,
             _ => {
-                return Err(ExprError::RunTimeMessage(String::from(
+                return Err(TullyError::RunTimeMessage(String::from(
                     "Expecting number in right side of operation",
                 )));
             }
@@ -103,10 +104,10 @@ impl<'a> Evaluator {
         return Ok((left_value.to_owned(), right_value.to_owned()));
     }
 
-    fn check_number(value: &Value) -> Result<f64, ExprError> {
+    fn check_number(value: &Value) -> Result<f64, TullyError> {
         match value {
             Value::Float(value) => Ok(value.to_owned()),
-            _ => Err(ExprError::RunTimeMessage(String::from(
+            _ => Err(TullyError::RunTimeMessage(String::from(
                 "Expecting number in unary operation",
             ))),
         }
@@ -124,7 +125,7 @@ impl<'a> Evaluator {
         &mut self,
         statements: &Vec<Box<ExprType>>,
         new_block: bool,
-    ) -> Result<(), ExprError> {
+    ) -> Result<(), TullyError> {
         if new_block {
             self.globals.new_env();
         }
@@ -136,10 +137,14 @@ impl<'a> Evaluator {
         }
         Ok(())
     }
+
+    pub fn error(token: &Token, message: &str) -> TullyError {
+        TullyError::runtime_error_message(token, message)
+    }
 }
 
-impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
-    fn visit_binary_operation(&mut self, expr: &Binary) -> Result<Rc<Value>, ExprError> {
+impl Visitor<Result<Rc<Value>, TullyError>> for Evaluator {
+    fn visit_binary_operation(&mut self, expr: &Binary) -> Result<Rc<Value>, TullyError> {
         let left = self.accept(&*expr.left)?;
         let right = self.accept(&*expr.right)?;
         let operation = &expr.operator;
@@ -150,22 +155,25 @@ impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
                     Value::Float(value2) => {
                         Ok(Rc::new(Value::String(format!("{}{}", value, value2))))
                     }
-                    _ => Err(ExprError::RunTimeMessage(String::from(
+                    _ => Err(Evaluator::error(
+                        operation,
                         "Operators must be  strings or numbers for '+' ",
-                    ))),
+                    )),
                 },
                 Value::Float(value) => match right.borrow() {
                     Value::String(value2) => {
-                        return Ok(Rc::new(Value::String(format!("{}{}", value, value2))))
+                        return Ok(Rc::new(Value::String(format!("{}{}", value, value2))));
                     }
                     Value::Float(value2) => Ok(Rc::new(Value::Float(value + value2))),
-                    _ => Err(ExprError::RunTimeMessage(String::from(
+                    _ => Err(Evaluator::error(
+                        operation,
                         "Operators must be  strings or numbers for '+' ",
-                    ))),
+                    )),
                 },
-                _ => Err(ExprError::RunTimeMessage(String::from(
+                _ => Err(Evaluator::error(
+                    operation,
                     "Operators must be  strings or numbers for '+' ",
-                ))),
+                )),
             },
             TokenType::Minus => {
                 let (left_value, right_value) =
@@ -206,14 +214,12 @@ impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
             TokenType::BangEqual => Ok(Rc::new(Value::Boolean(!left.equals(&right)))),
             _ => {
                 // Not reachable
-                return Err(ExprError::RunTimeMessage(String::from(
-                    "Unsupported binary operation",
-                )));
+                return Err(Evaluator::error(operation, "Unsupported binary operation"));
             }
         }
     }
 
-    fn visit_literal(&mut self, expr: &Literal) -> Result<Rc<Value>, ExprError> {
+    fn visit_literal(&mut self, expr: &Literal) -> Result<Rc<Value>, TullyError> {
         match &expr.value {
             LiteralValue::Float(value) => Ok(Rc::new(Value::Float(value.clone()))),
             LiteralValue::String(value) => Ok(Rc::new(Value::String(value.clone()))),
@@ -222,7 +228,7 @@ impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
         }
     }
 
-    fn visit_unary(&mut self, expr: &Unary) -> Result<Rc<Value>, ExprError> {
+    fn visit_unary(&mut self, expr: &Unary) -> Result<Rc<Value>, TullyError> {
         let value = self.accept(&*expr.expression)?;
 
         match expr.operator.tt {
@@ -240,39 +246,40 @@ impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
             }
             _ => {
                 // Not reachable
-                return Err(ExprError::RunTimeMessage(String::from(
+                return Err(Evaluator::error(
+                    &expr.operator,
                     "Unsupported unary operation",
-                )));
+                ));
             }
         }
     }
 
-    fn visit_group(&mut self, expr: &Group) -> Result<Rc<Value>, ExprError> {
+    fn visit_group(&mut self, expr: &Group) -> Result<Rc<Value>, TullyError> {
         self.accept(&*expr.expression)
     }
 
-    fn visit_expression(&mut self, expr: &Expression) -> Result<Rc<Value>, ExprError> {
+    fn visit_expression(&mut self, expr: &Expression) -> Result<Rc<Value>, TullyError> {
         let _ = self.accept(&*expr.expression)?;
         return Ok(Rc::clone(&self.constants.nil));
     }
 
-    fn visit_print(&mut self, expr: &Print) -> Result<Rc<Value>, ExprError> {
+    fn visit_print(&mut self, expr: &Print) -> Result<Rc<Value>, TullyError> {
         let value = self.accept(&*expr.expression)?;
         println!("{}", value.to_string());
         return Ok(Rc::clone(&self.constants.nil));
     }
 
-    fn visit_variable(&mut self, expr: &Variable) -> Result<Rc<Value>, ExprError> {
-        match self.globals.get(&expr.name) {
+    fn visit_variable(&mut self, expr: &Variable) -> Result<Rc<Value>, TullyError> {
+        match self.globals.get(&expr.name.lexeme) {
             Some(value) => Ok(value),
-            None => Err(ExprError::RunTimeMessage(format!(
-                "Undefined variable {}",
-                expr.name
-            ))),
+            None => Err(Evaluator::error(
+                &expr.name,
+                &format!("Undefined variable {}", &expr.name.lexeme),
+            )),
         }
     }
 
-    fn visit_var(&mut self, expr: &Var) -> Result<Rc<Value>, ExprError> {
+    fn visit_var(&mut self, expr: &Var) -> Result<Rc<Value>, TullyError> {
         match &expr.initializer {
             Some(value) => {
                 let value = self.accept(&*value)?;
@@ -285,18 +292,18 @@ impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
         Ok(Rc::clone(&self.constants.nil))
     }
 
-    fn visit_assign(&mut self, expr: &Assign) -> Result<Rc<Value>, ExprError> {
+    fn visit_assign(&mut self, expr: &Assign) -> Result<Rc<Value>, TullyError> {
         let value = self.accept(&*expr.initializer)?;
         self.globals.assign(&expr.name, Rc::clone(&value))?;
         Ok(Rc::clone(&value))
     }
 
-    fn visit_block(&mut self, expr: &Block) -> Result<Rc<Value>, ExprError> {
+    fn visit_block(&mut self, expr: &Block) -> Result<Rc<Value>, TullyError> {
         self.execute_block(&expr.statements, true)?;
         Ok(Rc::clone(&self.constants.nil))
     }
 
-    fn visit_if_statement(&mut self, expr: &IfStatement) -> Result<Rc<Value>, ExprError> {
+    fn visit_if_statement(&mut self, expr: &IfStatement) -> Result<Rc<Value>, TullyError> {
         let condition = self.accept(&*expr.condition)?;
         if Evaluator::is_trusty(condition.borrow()) {
             self.accept(&*expr.then_branch)?;
@@ -311,14 +318,14 @@ impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
         Ok(Rc::clone(&self.constants.nil))
     }
 
-    fn visit_while_statement(&mut self, expr: &WhileStatement) -> Result<Rc<Value>, ExprError> {
+    fn visit_while_statement(&mut self, expr: &WhileStatement) -> Result<Rc<Value>, TullyError> {
         while Evaluator::is_trusty(self.accept(&*expr.condition)?.borrow()) {
             self.accept(&*expr.body)?;
         }
         Ok(Rc::clone(&self.constants.nil))
     }
 
-    fn visit_call(&mut self, expr: &Call) -> Result<Rc<Value>, ExprError> {
+    fn visit_call(&mut self, expr: &Call) -> Result<Rc<Value>, TullyError> {
         let callee = self.accept(&*expr.callee)?;
         let mut arguments = Vec::new();
         for arg in &expr.arguments {
@@ -332,31 +339,37 @@ impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
                         //                        println!("Calling {:?}", nf.deref().borrow().to_string());
                         let nf: &RefCell<TullyCallable> = nf.borrow();
                         if nf.borrow().arity() != arguments.len() {
-                            return Err(ExprError::RunTimeMessage(String::from(format!(
-                                "Expected {} args but got {}",
-                                nf.borrow().arity(),
-                                arguments.len()
-                            ))));
+                            return Err(Evaluator::error(
+                                &expr.paren,
+                                &format!(
+                                    "Expected {} args but got {}",
+                                    nf.borrow().arity(),
+                                    arguments.len()
+                                ),
+                            ));
                         }
                         nf.borrow().call(self, arguments)
                     }
                     TullyFunction::NativeFunction(nf) => {
                         if nf.arity() != arguments.len() {
-                            return Err(ExprError::RunTimeMessage(String::from(format!(
-                                "Expected {} args but got {}",
-                                nf.arity(),
-                                arguments.len()
-                            ))));
+                            return Err(Evaluator::error(
+                                &expr.paren,
+                                &format!(
+                                    "Expected {} args but got {}",
+                                    nf.arity(),
+                                    arguments.len()
+                                ),
+                            ));
                         }
                         nf.call(self, arguments)
                     }
                 }
             }
-            _ => Err(ExprError::RunTimeMessage(String::from(" Not a callable"))),
+            _ => Err(Evaluator::error(&expr.paren, " Not a callable")),
         }
     }
 
-    fn visit_function(&mut self, expr: &Function) -> Result<Rc<Value>, ExprError> {
+    fn visit_function(&mut self, expr: &Function) -> Result<Rc<Value>, TullyError> {
         let name = &expr.name.lexeme;
         let function = TullyCallable {
             declaration: expr.clone(),
@@ -371,13 +384,13 @@ impl Visitor<Result<Rc<Value>, ExprError>> for Evaluator {
         Ok(Rc::clone(&self.constants.nil))
     }
 
-    fn visit_return(&mut self, expr: &Return) -> Result<Rc<Value>, ExprError> {
+    fn visit_return(&mut self, expr: &Return) -> Result<Rc<Value>, TullyError> {
         match &expr.value {
             Some(value) => {
                 let value = self.accept(&*value)?;
-                Err(ExprError::Return(value))
+                Err(TullyError::Return(value))
             }
-            None => Err(ExprError::Return(Rc::clone(&self.constants.nil))),
+            None => Err(TullyError::Return(Rc::clone(&self.constants.nil))),
         }
     }
 }

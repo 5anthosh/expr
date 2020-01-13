@@ -1,11 +1,12 @@
-use crate::error::ExprError;
-use crate::evaluator::Evaluator;
-use crate::parser::Function;
-use crate::value::{TullyFunction, Value};
 use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+
+use crate::error::TullyError;
+use crate::evaluator::Evaluator;
+use crate::parser::Function;
+use crate::value::{TullyFunction, Value};
 
 pub trait Callable {
     fn arity(&self) -> usize;
@@ -13,7 +14,7 @@ pub trait Callable {
         &self,
         evaluator: &mut Evaluator,
         arguments: Vec<Rc<Value>>,
-    ) -> Result<Rc<Value>, ExprError>;
+    ) -> Result<Rc<Value>, TullyError>;
     fn to_string(&self) -> String;
 }
 
@@ -53,7 +54,7 @@ impl Callable for TullyCallable {
         &self,
         evaluator: &mut Evaluator,
         arguments: Vec<Rc<Value>>,
-    ) -> Result<Rc<Value>, ExprError> {
+    ) -> Result<Rc<Value>, TullyError> {
         // println!("calling");
         let mut n = 0;
         if let Some(value) = &self.closure {
@@ -76,7 +77,7 @@ impl Callable for TullyCallable {
             }
 
             if let Err(err) = value {
-                if let ExprError::Return(value) = err {
+                if let TullyError::Return(value) = err {
                     if let Value::Function(tf) = value.borrow() {
                         if let TullyFunction::NFunction(tc) = tf {
                             //println!("print");

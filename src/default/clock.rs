@@ -1,8 +1,9 @@
-use crate::error::ExprError;
-use crate::evaluator::{Callable, Evaluator};
-use crate::value::Value;
 use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+use crate::error::TullyError;
+use crate::evaluator::{Callable, Evaluator};
+use crate::value::Value;
 
 pub struct Clock;
 impl Callable for Clock {
@@ -14,13 +15,13 @@ impl Callable for Clock {
         &self,
         _evaluator: &mut Evaluator,
         _arguments: Vec<Rc<Value>>,
-    ) -> Result<Rc<Value>, ExprError> {
+    ) -> Result<Rc<Value>, TullyError> {
         let start = SystemTime::now();
         let since_the_epoch = start.duration_since(UNIX_EPOCH);
         let since_the_epoch = match since_the_epoch {
             Ok(duration) => duration,
             Err(e) => {
-                return Err(ExprError::RunTimeMessage(String::from(format!(
+                return Err(TullyError::RunTimeMessage(String::from(format!(
                     "{}",
                     e.to_string()
                 ))))

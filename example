@@ -1,18 +1,18 @@
-var asdf = 234234;
-asdf = asdf + 1;
-print asdf;
+var variable = 234234;
+variable = variable + 1;
+print variable;
 {
   var hello = "santhosh";
-  print asdf;
-  var asdf = 1234;
+  print variable;
+  var variable = 1234;
   {
-    print asdf;
-    asdf = 1222;
+    print variable;
+    variable = 1222;
   }
-  print asdf;
+  print variable;
   print hello;
 }
-print asdf;
+print variable;
 
 if (423423) {
   print true;
@@ -35,6 +35,9 @@ var start = clock();
 printHello(0, 1);
 print clock() - start + " sec";
 print clock;
+print clock;
+
+print clock(234234);
 
 fun fibonacci(n) {
   if (n <= 1) return n;
@@ -87,8 +90,9 @@ fun first() {
         }
         return third;
     }
-    return second;  
+    return second;
 }
+
 var second = first();
 var third = second();
 third();
