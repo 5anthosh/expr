@@ -409,8 +409,8 @@ impl Parser {
         Err(Parser::error(self.peek(), "Unexpected token {:?}"))
     }
 
-    fn match_token(&self, types: &[TokenType]) -> bool {
-        for t in types.iter() {
+    fn match_token(&self, token_types: &[TokenType]) -> bool {
+        for t in token_types.iter() {
             if self.check(t) {
                 self.increment();
                 return true;
@@ -419,12 +419,12 @@ impl Parser {
         return false;
     }
 
-    fn check(&self, t: &TokenType) -> bool {
+    fn check(&self, token_type: &TokenType) -> bool {
         if self.at_end() {
             return false;
         }
         match self.peek() {
-            Some(t1) => std::mem::discriminant(&t1.tt) == std::mem::discriminant(t),
+            Some(t1) => std::mem::discriminant(&t1.tt) == std::mem::discriminant(token_type),
             _ => false,
         }
     }
@@ -456,8 +456,8 @@ impl Parser {
         self.n.set(self.n.get() + 1);
     }
 
-    fn expect_token_or(&self, tt: TokenType, message: &str) -> Result<&Token, TullyError> {
-        if !self.match_token(&[tt]) {
+    fn expect_token_or(&self, token_type: TokenType, message: &str) -> Result<&Token, TullyError> {
+        if !self.match_token(&[token_type]) {
             return Err(Parser::error(Some(self.previous()), message));
         }
         Ok(self.previous())

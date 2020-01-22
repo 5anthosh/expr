@@ -37,7 +37,7 @@ print clock() - start + " sec";
 print clock;
 print clock;
 
-print clock(234234);
+print clock();
 
 fun fibonacci(n) {
   if (n <= 1) return n;
@@ -60,7 +60,6 @@ fun makeCounter() {
 
 var fib = fibonacci;
 print fib(10);
-print fibonacci(10);
 
 
 fun makeCounter() {
@@ -98,3 +97,8 @@ var third = second();
 third();
 second();
 third();
+
+print random_alphanumeric();
+for(var i = 1.1 ; i < 101; i = i + 1){
+print random() * 1000;
+}

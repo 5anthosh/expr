@@ -87,7 +87,7 @@ impl Lexer {
     }
 
     fn identifier(&mut self) -> Token {
-        while self.peek(0).is_alphanumeric() {
+        while self.peek(0).is_alphanumeric() || self.peek(0) == '_' {
             self.eat();
         }
 

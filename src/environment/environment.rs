@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
 
-use crate::default::Clock;
+use crate::default::{Clock, Random, RandomAlphaNumeric};
 use crate::error::TullyError;
 use crate::evaluator::Evaluator;
 use crate::lexer::token::Token;
@@ -70,7 +70,6 @@ impl Environment {
     }
 
     pub fn delete_recent(&mut self) -> Option<Rc<RefCell<HashMap<String, Rc<Value>>>>> {
-        // println!("deleting env , before deleteing {:?}", self.scopes);
         Some(self.scopes.remove(0))
     }
 
@@ -80,6 +79,18 @@ impl Environment {
             Rc::new(Value::Function(TullyFunction::NativeFunction(Rc::new(
                 Clock,
             )))),
-        )
+        );
+        self.define(
+            &String::from("random_alphanumeric"),
+            Rc::new(Value::Function(TullyFunction::NativeFunction(Rc::new(
+                RandomAlphaNumeric,
+            )))),
+        );
+        self.define(
+            &String::from("random"),
+            Rc::new(Value::Function(TullyFunction::NativeFunction(Rc::new(
+                Random,
+            )))),
+        );
     }
 }
